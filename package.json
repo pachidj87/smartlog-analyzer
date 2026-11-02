@@ -1,0 +1,16 @@
+{
+  "name": "smartlog-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "build": "pnpm build:api && pnpm build:web",
+    "build:api": "pnpm --filter smartlog-api build",
+    "build:web": "pnpm --filter smartlog-web build",
+    "start:api": "pnpm --filter smartlog-api start:dev",
+    "start:web": "pnpm --filter smartlog-web start",
+    "test:api": "pnpm --filter smartlog-api test",
+    "test:api:e2e": "pnpm --filter smartlog-api test:e2e",
+    "test:web": "pnpm --filter smartlog-web test"
+  }
+}
