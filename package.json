@@ -9,8 +9,9 @@
     "build:web": "pnpm --filter smartlog-web build",
     "start:api": "pnpm --filter smartlog-api start:dev",
     "start:web": "pnpm --filter smartlog-web start",
-    "test:api": "pnpm --filter smartlog-api test",
-    "test:api:e2e": "pnpm --filter smartlog-api test:e2e",
-    "test:web": "pnpm --filter smartlog-web test"
+    "test": "pnpm test:unit && pnpm test:integration && pnpm test:web",
+    "test:unit": "pnpm --filter smartlog-api exec jest --config ../../tests/jest.unit.config.cjs --runInBand",
+    "test:integration": "pnpm --filter smartlog-api exec jest --config ../../tests/jest.integration.config.cjs --runInBand",
+    "test:web": "pnpm --filter smartlog-web exec ng test --watch=false"
   }
 }
