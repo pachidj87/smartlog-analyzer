@@ -1,0 +1,1 @@
+export const ANALYSIS_QUEUE_NAME= 'analysis-queue';
