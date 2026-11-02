@@ -42,3 +42,13 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/src/web/dist/web/browser /usr/share/nginx/html
 
 EXPOSE 80
+
+FROM nginx:1.27-alpine AS proxy
+
+RUN apk add --no-cache apache2-utils
+COPY nginx-proxy.conf.template /etc/nginx/templates/default.conf.template
+COPY nginx-proxy-entrypoint.sh /usr/local/bin/nginx-proxy-entrypoint
+RUN chmod +x /usr/local/bin/nginx-proxy-entrypoint
+
+EXPOSE 80
+ENTRYPOINT ["/usr/local/bin/nginx-proxy-entrypoint"]

@@ -4,32 +4,79 @@ services:
       context: .
       target: api
     environment:
-      NODE_ENV: production
-      PORT: 3000
-      MONGODB_URI: ${MONGODB_URI:-mongodb://smartlog:change-me@mongodb:27017/smartlog?authSource=admin}
-    ports:
-      - "${API_PORT:-3000}:3000"
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${API_PORT}
+      APP_BASE_URL: ${APP_BASE_URL_DOCKER}
+      MONGO_DATABASE: ${MONGO_DATABASE}
+      MONGODB_URI: ${MONGODB_URI_DOCKER}
+      REDIS_URL: ${REDIS_URL_DOCKER}
+      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS}
+      AI_PROVIDER: ${AI_PROVIDER}
+      AI_FALLBACK_PROVIDER: ${AI_FALLBACK_PROVIDER}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS}
+      AI_HEALTH_TIMEOUT_MS: ${AI_HEALTH_TIMEOUT_MS}
+      AI_RETRY_ATTEMPTS: ${AI_RETRY_ATTEMPTS}
+      AI_RETRY_BACKOFF_MS: ${AI_RETRY_BACKOFF_MS}
+      AI_PROVIDER_OPENAI_URL: ${AI_PROVIDER_OPENAI_URL}
+      AI_PROVIDER_OPENAI_HEALTH_URL: ${AI_PROVIDER_OPENAI_HEALTH_URL}
+      AI_PROVIDER_OPENAI_API_KEY: ${AI_PROVIDER_OPENAI_API_KEY}
+      AI_PROVIDER_OPENAI_MODEL: ${AI_PROVIDER_OPENAI_MODEL}
+      AI_PROVIDER_ANTHROPIC_URL: ${AI_PROVIDER_ANTHROPIC_URL}
+      AI_PROVIDER_ANTHROPIC_HEALTH_URL: ${AI_PROVIDER_ANTHROPIC_HEALTH_URL}
+      AI_PROVIDER_ANTHROPIC_API_KEY: ${AI_PROVIDER_ANTHROPIC_API_KEY}
+      AI_PROVIDER_ANTHROPIC_MODEL: ${AI_PROVIDER_ANTHROPIC_MODEL}
+      AI_PROVIDER_GEMINI_URL: ${AI_PROVIDER_GEMINI_URL}
+      AI_PROVIDER_GEMINI_HEALTH_URL: ${AI_PROVIDER_GEMINI_HEALTH_URL}
+      AI_PROVIDER_GEMINI_API_KEY: ${AI_PROVIDER_GEMINI_API_KEY}
+      HEALTH_CHECK_MEMORY_HEAP_LIMIT: ${HEALTH_CHECK_MEMORY_HEAP_LIMIT}
+      HEALTH_CHECK_MEMORY_RSS_LIMIT: ${HEALTH_CHECK_MEMORY_RSS_LIMIT}
     depends_on:
       mongodb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:${API_PORT}/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   web:
     build:
       context: .
       target: web
+
+  proxy:
+    build:
+      context: .
+      target: proxy
+    environment:
+      HTTP_AUTH_USERNAME: ${HTTP_AUTH_USERNAME}
+      HTTP_AUTH_PASSWORD: ${HTTP_AUTH_PASSWORD}
+      API_PORT: ${API_PORT}
     ports:
-      - "${WEB_PORT:-4200}:80"
+      - "${PROXY_PORT}:80"
     depends_on:
-      - api
+      api:
+        condition: service_started
+      web:
+        condition: service_started
 
   mongodb:
-    image: mongo:8.0-noble
+    image: ${MONGODB_IMAGE}
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-smartlog}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-change-me}
-      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-smartlog}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "127.0.0.1:${MONGO_PORT}:27017"
     volumes:
       - mongodb_data:/data/db
     healthcheck:
@@ -52,5 +99,20 @@ services:
       retries: 5
       start_period: 10s
 
+  redis:
+    image: ${REDIS_IMAGE}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
 volumes:
   mongodb_data:
+  redis_data:
