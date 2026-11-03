@@ -61,10 +61,22 @@ export abstract class BaseAnalysisProvider implements AnalysisProviderInterface 
   protected getTextContent(
     value: unknown,
     providerName: string,
-    path: string[],
+    path: Array<string | number>,
   ): string {
     let current: unknown = value;
     for (const key of path) {
+      const index = this.toArrayIndex(key);
+
+      if (index !== null) {
+        if (!Array.isArray(current)) {
+          throw new ServiceUnavailableException(
+            `${providerName} returned an invalid analysis response`,
+          );
+        }
+        current = current[index];
+        continue;
+      }
+
       if (typeof current !== 'object' || current === null || Array.isArray(current)) {
         throw new ServiceUnavailableException(
           `${providerName} returned an invalid analysis response`,
@@ -78,6 +90,16 @@ export abstract class BaseAnalysisProvider implements AnalysisProviderInterface 
       );
     }
     return current;
+  }
+
+  private toArrayIndex(key: string | number): number | null {
+    if (typeof key === 'number') {
+      return Number.isInteger(key) && key >= 0 ? key : null;
+    }
+    if (/^\d+$/.test(key)) {
+      return Number(key);
+    }
+    return null;
   }
 
   protected requiredConfig(suffix: 'URL' | 'HEALTH_URL' | 'API_KEY'): string {

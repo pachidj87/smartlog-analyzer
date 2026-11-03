@@ -35,9 +35,8 @@ export class AnthropicAnalysisProvider extends BaseAnalysisProvider {
     );
 
     const textContext = this.getTextContent(response.data, this.name, [
-      'completion',
       'content',
-      '0',
+      0,
       'text',
     ]);
 
