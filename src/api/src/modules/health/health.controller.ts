@@ -36,11 +36,18 @@ export class HealthController {
   @ApiResponse({ status: 503, description: 'One or more dependencies are unhealthy' })
   check() {
     const logger = new Logger(HealthController.name);
+    const baseUrl = this.config.get<string>(
+      'APP_BASE_URL',
+      'http://api:3000/',
+    );
+    // The API is mounted under the global prefix, so the root route lives at
+    // /api, not at the bare base URL.
+    const apiRootUrl = new URL('api', baseUrl).toString();
     return this.health.check([
       async () =>
         this.http.responseCheck(
           'root_endpoint',
-          this.config.get<string>('APP_BASE_URL', 'http://api:3000/'),
+          apiRootUrl,
           (response) => response.status === 200,
         ),
       async () => {
@@ -111,5 +118,12 @@ export class HealthController {
             1024,
         ),
     ]);
+  }
+
+  @Get('live')
+  @ApiOperation({ summary: 'Liveness probe' })
+  @ApiResponse({ status: 200, description: 'Process is running' })
+  liveness() {
+    return { status: 'ok', uptime: process.uptime() };
   }
 }
