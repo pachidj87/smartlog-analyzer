@@ -85,7 +85,9 @@
               "zone.js",
               "zone.js/testing"
             ],
-            "tsConfig": "../../tests/web/tsconfig.spec.json",
+            "tsConfig": "tsconfig.spec.json",
+            "karmaConfig": "karma.conf.cjs",
+            "browsers": "ChromeHeadlessNoSandbox",
             "inlineStyleLanguage": "scss",
             "assets": [
               {
