@@ -1,3 +1,3 @@
-export interface AnalysisJobData {
+export interface AnalysisJobDataInterface {
   analysisId: string;
 }

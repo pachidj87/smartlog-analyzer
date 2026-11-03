@@ -2,16 +2,17 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import { AnalysisResult } from '../contracts';
+import { LogEntryInterface } from 'src/common/contracts';
+import { AnalysisResultInterface } from '../contracts';
 import { ProviderName } from '../enums';
 import { BaseAnalysisProvider } from './base-analysis.provider';
-import { LogEntry } from 'src/common/contracts';
+
 
 @Injectable()
 export class AnthropicAnalysisProvider extends BaseAnalysisProvider {
   readonly name = ProviderName.ANTHROPIC;
 
-  async analyze(logs: LogEntry[]): Promise<AnalysisResult> {
+  async analyze(logs: LogEntryInterface[]): Promise<AnalysisResultInterface> {
     const content = this.createAnalysisPrompt(logs);
     const response = await this.http.axiosRef.post<unknown>(
       this.requiredConfig('URL'),

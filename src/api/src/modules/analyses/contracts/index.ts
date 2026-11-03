@@ -1,4 +1,4 @@
-export { AnalysisInsight } from './analysis-insight.interface';
-export { AnalysisJobData } from './analysis-job-data.interface';
-export { AnalysisResult } from './analysis-result.interface';
-export { AnalysisProvider } from './analysis-provider.interface';
+export { AnalysisInsightInterface } from './analysis-insight.interface';
+export { AnalysisJobDataInterface } from './analysis-job-data.interface';
+export { AnalysisResultInterface } from './analysis-result.interface';
+export { AnalysisProviderInterface } from './analysis-provider.interface';

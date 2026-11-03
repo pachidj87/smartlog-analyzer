@@ -4,13 +4,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MongoRepository } from 'typeorm';
 import { Filter, ObjectId } from 'mongodb';
 
+import { LogsServiceInterface } from 'src/common/contracts';
 import { CreateLogDto } from './dto/create-log.dto';
 import { ListLogsQueryDto } from './dto/list-logs-query.dto';
 import { LogEntity } from './entities/log.entity';
 
 
 @Injectable()
-export class LogsService {
+export class LogsService implements LogsServiceInterface {
   constructor(
     @InjectRepository(LogEntity)
     private readonly logsRepository: MongoRepository<LogEntity>,

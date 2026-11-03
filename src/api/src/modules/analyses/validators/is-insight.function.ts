@@ -1,6 +1,6 @@
-import { AnalysisInsight } from "../contracts";
+import { AnalysisInsightInterface } from "../contracts";
 
-export function isInsight(value: unknown): value is AnalysisInsight {
+export function isInsight(value: unknown): value is AnalysisInsightInterface {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return false;
   }

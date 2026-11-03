@@ -1,3 +1,5 @@
+import { LOG_LEVELS, LogLevel } from '@nestjs/common';
+
 import { Transform, Type } from 'class-transformer';
 import {
   IsDateString,
@@ -11,7 +13,6 @@ import {
   Min,
 } from 'class-validator';
 
-import { LOG_LEVELS, LogLevel } from '../log-level.enum';
 
 export class ListLogsQueryDto {
   @IsOptional()

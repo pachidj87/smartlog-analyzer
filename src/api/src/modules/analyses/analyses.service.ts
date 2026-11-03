@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -7,16 +8,17 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { Filter, MongoRepository } from 'typeorm';
 import { ObjectId } from 'mongodb';
 import { Queue } from 'bullmq';
-import { Filter, MongoRepository } from 'typeorm';
 
-import { LogsService } from '../logs/logs.service';
+import { LogsServiceInterface } from 'src/common/contracts';
 import { AnalysisEntity } from './entities/analysis.entity';
 import { AnalysisStatus } from './enums';
 import { AnalyzeLogsDto } from './dto/analyze-logs.dto';
 import { ListAnalysesQueryDto } from './dto/list-analyses-query.dto';
 import { ANALYSIS_DEAD_LETTER_QUEUE_NAME, ANALYSIS_QUEUE_NAME } from './constants';
+import { LOGS_SERVICE } from './symbols';
 
 
 @Injectable()
@@ -26,7 +28,8 @@ export class AnalysesService {
   constructor(
     @InjectRepository(AnalysisEntity)
     private readonly analysesRepository: MongoRepository<AnalysisEntity>,
-    private readonly logsService: LogsService,
+    @Inject(LOGS_SERVICE)
+    private readonly logsService: LogsServiceInterface,
     @InjectQueue(ANALYSIS_QUEUE_NAME)
     private readonly analysisQueue: Queue,
     @InjectQueue(ANALYSIS_DEAD_LETTER_QUEUE_NAME)
@@ -100,8 +103,9 @@ export class AnalysesService {
   }
 
   async findOne(id: string) {
-    const analysis = await this.analysesRepository.findOneById(
-      new ObjectId(id),
+    const objectId = new ObjectId(id);
+    const analysis = await this.analysesRepository.findOneBy(
+      { _id: objectId },
     );
     if (!analysis) {
       throw new NotFoundException(`Analysis "${id}" was not found`);

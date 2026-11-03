@@ -11,7 +11,7 @@ import { AnalysisProviderRegistry } from '../providers/analysis-provider.registr
 import { AnalysisStatus } from '../enums/analysis-status.enum';
 import { ANALYSIS_QUEUE_NAME } from '../constants/analysis-queue-name.const';
 import { ANALYSIS_DEAD_LETTER_QUEUE_NAME } from '../constants/analysis-dead-letter-queue-name.const';
-import { AnalysisJobData } from '../contracts';
+import { AnalysisJobDataInterface } from '../contracts';
 
 
 @Processor(ANALYSIS_QUEUE_NAME)
@@ -29,7 +29,7 @@ export class AnalysisProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<AnalysisJobData>): Promise<void> {
+  async process(job: Job<AnalysisJobDataInterface>): Promise<void> {
     const objectId = new ObjectId(job.data.analysisId);
     const analysis = await this.analysisRepository.findOneBy(
       { _id: objectId },
@@ -68,7 +68,7 @@ export class AnalysisProcessor extends WorkerHost {
   }
 
   @OnWorkerEvent('failed')
-  async handleFailed(job: Job<AnalysisJobData> | undefined, error: Error) {
+  async handleFailed(job: Job<AnalysisJobDataInterface> | undefined, error: Error) {
     if (!job || job.attemptsMade < (job.opts.attempts ?? 1)) return;
 
     const analysisId = job.data.analysisId;

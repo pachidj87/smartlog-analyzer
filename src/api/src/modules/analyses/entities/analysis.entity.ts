@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { Column, Entity, ObjectIdColumn } from 'typeorm';
 
 import { AnalysisStatus } from '../enums';
-import { AnalysisResult } from '../contracts';
+import { AnalysisResultInterface as AnalysisResult } from '../contracts';
 
 @Entity('analyses')
 export class AnalysisEntity {

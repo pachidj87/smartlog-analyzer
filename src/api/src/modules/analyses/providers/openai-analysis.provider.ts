@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { AnalysisResult } from '../contracts';
+import { AnalysisResultInterface } from '../contracts';
 import { ProviderName } from '../enums';
-import { LogEntry } from 'src/common/contracts';
+import { LogEntryInterface } from 'src/common/contracts';
 import { BaseAnalysisProvider } from './base-analysis.provider';
 
 
@@ -10,7 +10,7 @@ import { BaseAnalysisProvider } from './base-analysis.provider';
 export class OpenAiAnalysisProvider extends BaseAnalysisProvider {
   readonly name = ProviderName.OPENAI;
 
-  async analyze(logs: LogEntry[]): Promise<AnalysisResult> {
+  async analyze(logs: LogEntryInterface[]): Promise<AnalysisResultInterface> {
     const content = this.createAnalysisPrompt(logs);
     const response = await this.http.axiosRef.post<unknown>(
       this.requiredConfig('URL'),

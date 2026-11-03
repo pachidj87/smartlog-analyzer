@@ -1,6 +1,6 @@
-import { AnalysisInsight } from "./analysis-insight.interface";
+import { AnalysisInsightInterface } from "./analysis-insight.interface";
 
-export interface AnalysisResult {
+export interface AnalysisResultInterface {
   summary: string;
-  insights: AnalysisInsight[];
+  insights: AnalysisInsightInterface[];
 }

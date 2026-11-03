@@ -8,11 +8,13 @@ import { AnalysisEntity } from './entities/analysis.entity';
 import { AnalysisProcessor } from './processors/analysis.processor';
 import { AnalysesController } from './analyses.controller';
 import { AnalysesService } from './analyses.service';
-import { ANALYSIS_PROVIDERS } from 'src/modules/analyses/analisys-provider.symbol';
 import { ANALYSIS_QUEUE_NAME } from './constants/analysis-queue-name.const';
 import { ANALYSIS_DEAD_LETTER_QUEUE_NAME } from './constants/analysis-dead-letter-queue-name.const';
 import { ProviderName } from './enums';
 import { AnalysisProviderRegistry, AnthropicAnalysisProvider, GeminiAnalysisProvider, OpenAiAnalysisProvider } from './providers';
+import { LogsModule } from '../logs/logs.module';
+import { LogsService } from '../logs/logs.service';
+import { ANALYSIS_PROVIDERS, LOGS_SERVICE } from './symbols';
 
 
 @Module({
@@ -59,6 +61,7 @@ import { AnalysisProviderRegistry, AnthropicAnalysisProvider, GeminiAnalysisProv
         defaultJobOptions: { removeOnComplete: false },
       },
     ),
+    LogsModule,
   ],
   controllers: [AnalysesController],
   providers: [
@@ -87,6 +90,10 @@ import { AnalysisProviderRegistry, AnthropicAnalysisProvider, GeminiAnalysisProv
         return providers;
       },
     },
+    {
+      provide: LOGS_SERVICE,
+      useClass: LogsService,
+    }
   ],
   exports: [AnalysisProviderRegistry],
 })

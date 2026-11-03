@@ -21,11 +21,11 @@ import { ListAnalysesQueryDto } from './dto/list-analyses-query.dto';
 import { AnalysesService } from './analyses.service';
 
 @ApiTags('Analyses')
-@Controller()
+@Controller('logs')
 export class AnalysesController {
   constructor(private readonly analysesService: AnalysesService) {}
 
-  @Post('logs/analyze')
+  @Post('analyze')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Queue an analysis for selected logs' })
   @ApiAcceptedResponse({ description: 'Analysis job accepted' })

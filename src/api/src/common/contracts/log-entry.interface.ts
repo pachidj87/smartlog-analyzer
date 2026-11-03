@@ -1,6 +1,6 @@
 import { LogLevel } from "@nestjs/common";
 
-export interface LogEntry {
+export interface LogEntryInterface {
   _id: unknown;
 
   service: string;

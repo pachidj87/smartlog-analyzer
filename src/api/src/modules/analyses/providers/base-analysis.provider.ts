@@ -2,13 +2,13 @@ import { ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { HttpService } from "@nestjs/axios";
 
-import { AnalysisProvider, AnalysisResult } from "../contracts";
+import { LogEntryInterface } from "src/common/contracts";
+import { AnalysisProviderInterface, AnalysisResultInterface } from "../contracts";
 import { ProviderName } from "../enums";
 import { isAnalysisResult } from "../validators";
-import { LogEntry } from "src/common/contracts";
 
 
-export abstract class BaseAnalysisProvider implements AnalysisProvider {
+export abstract class BaseAnalysisProvider implements AnalysisProviderInterface {
   abstract readonly name: ProviderName;
 
   constructor(
@@ -16,11 +16,11 @@ export abstract class BaseAnalysisProvider implements AnalysisProvider {
     protected readonly config: ConfigService,
   ) {}
 
-  abstract analyze(logs: LogEntry[]): Promise<AnalysisResult>;
+  abstract analyze(logs: LogEntryInterface[]): Promise<AnalysisResultInterface>;
 
   abstract checkHealth(): Promise<void>;
 
-  protected parseAnalysisResult(content: string): AnalysisResult {
+  protected parseAnalysisResult(content: string): AnalysisResultInterface {
     let value: unknown;
     try {
       value = JSON.parse(content);
@@ -39,7 +39,7 @@ export abstract class BaseAnalysisProvider implements AnalysisProvider {
     return value;
   }
 
-  protected createAnalysisPrompt(logs: LogEntry[]): string {
+  protected createAnalysisPrompt(logs: LogEntryInterface[]): string {
     const logMapping = logs.map((log) => ({
       service: log.service,
       timestamp: log.timestamp.toISOString(),

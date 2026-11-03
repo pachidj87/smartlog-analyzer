@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { AnalysisProvider } from '../contracts';
-import { LogEntry } from 'src/common/contracts';
-import { ANALYSIS_PROVIDERS } from 'src/modules/analyses/analisys-provider.symbol';
+import { LogEntryInterface } from 'src/common/contracts';
+import { AnalysisProviderInterface } from '../contracts';
+import { ANALYSIS_PROVIDERS } from 'src/modules/analyses/symbols/analisys-provider.symbol';
 
 
 @Injectable()
@@ -18,10 +18,10 @@ export class AnalysisProviderRegistry {
   constructor(
     private readonly config: ConfigService,
     @Inject(ANALYSIS_PROVIDERS)
-    private readonly providers: AnalysisProvider[],
+    private readonly providers: AnalysisProviderInterface[],
   ) {}
 
-  async analyze(logs: LogEntry[]) {
+  async analyze(logs: LogEntryInterface[]) {
     const activeName = this.config.get<string>('AI_PROVIDER');
     const fallbackName = this.config.get<string>('AI_FALLBACK_PROVIDER');
     const candidates = [activeName, fallbackName].filter(

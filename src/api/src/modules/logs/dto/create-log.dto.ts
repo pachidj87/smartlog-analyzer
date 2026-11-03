@@ -1,3 +1,5 @@
+import { LOG_LEVELS, LogLevel } from '@nestjs/common';
+
 import { Transform } from 'class-transformer';
 import {
   IsDateString,
@@ -10,7 +12,6 @@ import {
   IsOptional,
 } from 'class-validator';
 
-import { LOG_LEVELS, LogLevel } from '../log-level.enum';
 
 export class CreateLogDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
