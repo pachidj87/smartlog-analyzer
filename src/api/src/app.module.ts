@@ -14,8 +14,8 @@ import { LogsModule } from './modules/logs/logs.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRoot(AppDataSource.options),
+    ConfigModule.forRoot({ isGlobal: true, expandVariables: true }),
+    TypeOrmModule.forRoot(AppDataSource),
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],

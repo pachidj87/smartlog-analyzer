@@ -49,7 +49,7 @@ export class HealthController {
             throw new Error('MongoDB datasource is not initialized');
           }
           await this.dataSource.mongoManager.mongoQueryRunner.databaseConnection
-            .db(this.config.get<string>('MONGO_DATABASE', 'smartlog'))
+            .db(this.config.get<string>('MONGODB_DATABASE', 'smartlog'))
             .command({ ping: 1 });
           return this.indicator.check('database').up();
         } catch (error) {
