@@ -138,17 +138,25 @@ describe('POST /api/logs', () => {
     );
   });
 
-  it('rejects pagination values outside the supported bounds', async () => {
+  it.each([
+    ['a limit above the cap', { limit: 101 }, '/api/logs?limit=101'],
+    ['a zero limit', { limit: 0 }, '/api/logs?limit=0'],
+    ['a negative offset', { offset: -1 }, '/api/logs?offset=-1'],
+  ])('rejects %s with the shared error body', async (_label, query, path) => {
     const response = await request(app.getHttpServer())
       .get('/api/logs')
-      .query({ limit: 101, offset: -1 })
+      .query(query)
       .expect(400);
 
-    expect(response.body).toMatchObject({
-      statusCode: 400,
-      error: 'Bad Request',
-      path: '/api/logs?limit=101&offset=-1',
-    });
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: expect.anything(),
+        path,
+        timestamp: expect.any(String),
+      }),
+    );
     expect(logsService.findAll).not.toHaveBeenCalled();
   });
 });

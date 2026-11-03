@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalysisEntity } from './entities/analysis.entity';
 import { AnalysisProcessor } from './processors/analysis.processor';
 import { AnalysesController } from './analyses.controller';
+import { LogAnalysisController } from './log-analysis.controller';
 import { AnalysesService } from './analyses.service';
 import { ANALYSIS_QUEUE_NAME } from './constants/analysis-queue-name.const';
 import { ANALYSIS_DEAD_LETTER_QUEUE_NAME } from './constants/analysis-dead-letter-queue-name.const';
@@ -63,7 +64,7 @@ import { ANALYSIS_PROVIDERS, LOGS_SERVICE } from './symbols';
     ),
     LogsModule,
   ],
-  controllers: [AnalysesController],
+  controllers: [AnalysesController, LogAnalysisController],
   providers: [
     AnalysesService,
     AnalysisProcessor,

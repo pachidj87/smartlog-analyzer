@@ -8,6 +8,7 @@ import * as request from 'supertest';
 
 import { GlobalHttpExceptionFilter } from '../../src/api/src/common/filters/global-http-exception.filter';
 import { AnalysesController } from '../../src/api/src/modules/analyses/analyses.controller';
+import { LogAnalysisController } from '../../src/api/src/modules/analyses/log-analysis.controller';
 import { AnalysesService } from '../../src/api/src/modules/analyses/analyses.service';
 
 describe('Analysis HTTP endpoints', () => {
@@ -19,18 +20,18 @@ describe('Analysis HTTP endpoints', () => {
   };
   const analysesService = {
     enqueue: jest.fn().mockResolvedValue(analysis),
-    findAll: jest.fn().mockResolvedValue({
+    findAll: jest.fn().mockImplementation((query) => ({
       items: [analysis],
       total: 1,
-      limit: 20,
-      offset: 0,
-    }),
+      limit: query.limit,
+      offset: query.offset,
+    })),
     findOne: jest.fn().mockResolvedValue(analysis),
   };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      controllers: [AnalysesController],
+      controllers: [AnalysesController, LogAnalysisController],
       providers: [{ provide: AnalysesService, useValue: analysesService }],
     }).compile();
 
