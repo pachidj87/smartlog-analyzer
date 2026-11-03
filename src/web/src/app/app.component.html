@@ -1,238 +1,31 @@
-<main class="shell">
+<div class="shell">
   <header class="topbar">
-    <a class="brand" href="/" aria-label="SmartLog home">
+    <a class="brand" routerLink="/logs" aria-label="SmartLog home">
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
       <span>smartlog<span class="brand-period">.</span></span>
     </a>
+
+    <nav class="nav" aria-label="Primary">
+      @for (item of navItems; track item.path) {
+        <a
+          class="nav__link"
+          [routerLink]="item.path"
+          routerLinkActive="nav__link--active"
+        >
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+
     <div class="topbar-meta">
-      <span class="live-dot"></span>
+      <span class="live-dot" aria-hidden="true"></span>
       <span>LOCAL ENVIRONMENT</span>
-      <span class="topbar-divider"></span>
+      <span class="topbar-divider" aria-hidden="true"></span>
       <a href="/api/docs" target="_blank" rel="noreferrer">API DOCS ↗</a>
     </div>
   </header>
 
-  <section class="intro">
-    <div>
-      <p class="eyebrow">OBSERVABILITY / WORKSPACE</p>
-      <h1>Signals in the noise.</h1>
-      <p class="intro-copy">Collect service logs. Find the patterns worth your attention.</p>
-    </div>
-    <button class="refresh-button" type="button" (click)="refresh()" aria-label="Refresh logs and analyses">
-      <span aria-hidden="true">↻</span> Refresh
-    </button>
-  </section>
-
-  @if (error()) {
-    <div class="notice notice-error" role="alert">
-      <span class="notice-icon">!</span>
-      <span>{{ error() }}</span>
-      <button type="button" (click)="error.set('')" aria-label="Dismiss error">×</button>
-    </div>
-  }
-  @if (notice()) {
-    <div class="notice notice-success" role="status">
-      <span class="notice-icon">✓</span>
-      <span>{{ notice() }}</span>
-      <button type="button" (click)="notice.set('')" aria-label="Dismiss notice">×</button>
-    </div>
-  }
-  @if (pollingError()) {
-    <div class="notice notice-error" role="status">
-      <span class="notice-icon">!</span>
-      <span>{{ pollingError() }}</span>
-      <button type="button" (click)="pollingError.set('')" aria-label="Dismiss polling message">×</button>
-    </div>
-  }
-
-  <section class="metrics" aria-label="Workspace overview">
-    <article class="metric-card">
-      <span class="metric-label">LOG ENTRIES</span>
-      <strong>{{ logTotal().toLocaleString() }}</strong>
-      <span class="metric-foot"><span class="metric-bar bar-cyan"></span>Across all services</span>
-    </article>
-    <article class="metric-card">
-      <span class="metric-label">ANALYSIS JOBS</span>
-      <strong>{{ taskTotal().toLocaleString() }}</strong>
-      <span class="metric-foot"><span class="metric-bar bar-amber"></span>AI-assisted reviews</span>
-    </article>
-    <article class="metric-card metric-card-wide">
-      <span class="metric-label">PROCESSING MODEL</span>
-      <strong class="metric-model">Provider-agnostic queue</strong>
-      <span class="metric-foot"><span class="status-pulse"></span>Fallback enabled · Redis-backed</span>
-    </article>
-  </section>
-
-  <section class="workbench">
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">01 / INGEST</p>
-        <h2>Send a log signal</h2>
-      </div>
-      <span class="section-index">INCOMING EVENT</span>
-    </div>
-
-    <form class="ingest-form" (ngSubmit)="addLog()">
-      <label class="field service-field">
-        <span>Service slug</span>
-        <input
-          name="service"
-          [(ngModel)]="service"
-          placeholder="e.g. payment-api"
-          pattern="[a-z0-9]+(-[a-z0-9]+)*"
-          maxlength="63"
-          required
-        />
-      </label>
-      <label class="field level-field">
-        <span>Severity</span>
-        <select name="level" [(ngModel)]="level">
-          @for (logLevel of logLevels; track logLevel) {
-            <option [value]="logLevel">{{ logLevel }}</option>
-          }
-        </select>
-      </label>
-      <label class="field message-field">
-        <span>Message</span>
-        <input
-          name="message"
-          [(ngModel)]="message"
-          placeholder="Describe the event…"
-          maxlength="10000"
-          required
-        />
-      </label>
-      <button class="primary-button" type="submit" [disabled]="submitting()">
-        {{ submitting() ? 'Sending…' : 'Ingest log' }} <span aria-hidden="true">↗</span>
-      </button>
-    </form>
-  </section>
-
-  <section class="content-grid">
-    <section class="panel logs-panel">
-      <div class="section-heading panel-heading">
-        <div>
-          <p class="eyebrow">02 / STREAM</p>
-          <h2>Recent logs <span class="count-badge">{{ logs().length }}</span></h2>
-        </div>
-        <button
-          class="analyze-button"
-          type="button"
-          (click)="analyzeSelected()"
-          [disabled]="selectedIds().size === 0 || submitting()"
-        >
-          <span aria-hidden="true">✳</span>
-          Analyze {{ selectedIds().size ? '(' + selectedIds().size + ')' : '' }}
-        </button>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th class="select-cell"><span class="sr-only">Select</span></th>
-              <th>LEVEL</th>
-              <th>SERVICE / MESSAGE</th>
-              <th class="time-heading">RECEIVED</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (log of logs(); track trackById($index, log)) {
-              <tr>
-                <td class="select-cell">
-                  <input
-                    type="checkbox"
-                    [checked]="selectedIds().has(log.id)"
-                    (change)="toggleLog(log.id, $any($event.target).checked)"
-                    [attr.aria-label]="'Select log from ' + log.service"
-                  />
-                </td>
-                <td><span class="level-tag" [class]="'level-tag level-' + log.level">{{ log.level }}</span></td>
-                <td>
-                  <div class="log-service">{{ log.service }}</div>
-                  <div class="log-message">{{ log.message }}</div>
-                </td>
-                <td class="time-cell">{{ log.timestamp | date: 'MMM d, HH:mm:ss' }}</td>
-              </tr>
-            } @empty {
-              <tr>
-                <td class="empty-cell" colspan="4">
-                  <span class="empty-symbol">∅</span>
-                  @if (loading()) {
-                    Loading recent signals…
-                  } @else {
-                    No logs yet. Ingest a signal above to get started.
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      <footer class="panel-footer">
-        <span>Showing {{ logs().length }} of {{ logTotal() }} events</span>
-        <span>Sorted by newest first</span>
-      </footer>
-    </section>
-
-    <aside class="panel activity-panel">
-      <div class="section-heading panel-heading">
-        <div>
-          <p class="eyebrow">03 / INTELLIGENCE</p>
-          <h2>Analysis queue <span class="count-badge">{{ tasks().length }}</span></h2>
-        </div>
-        <span class="queue-glyph" aria-hidden="true">⌁</span>
-      </div>
-      <div class="task-list" aria-live="polite">
-        @for (task of tasks(); track trackById($index, task)) {
-          <article class="task-card" [class]="'task-card task-' + task.status">
-            <div class="task-topline">
-              <span class="task-status" [class]="'task-status status-' + task.status">
-                @if (task.status === 'queued' || task.status === 'processing') {
-                  <span class="status-pulse"></span>
-                }
-                {{ statusLabel(task.status) }}
-              </span>
-              <time>{{ task.updatedAt | date: 'HH:mm:ss' }}</time>
-            </div>
-            <div class="task-id">JOB / {{ task.id.slice(-8).toUpperCase() }}</div>
-            @if (task.status === 'queued') {
-              <p class="task-description">Waiting for an available worker.</p>
-            } @else if (task.status === 'processing') {
-              <p class="task-description">Reviewing {{ task.logIds.length }} selected signals…</p>
-            } @else if (task.status === 'completed') {
-              <p class="task-description">{{ task.result?.summary }}</p>
-              @if (task.result?.insights?.length) {
-                <ul class="insight-list">
-                  @for (insight of task.result?.insights; track insight.title) {
-                    <li><span class="insight-mark">↳</span><span><strong>{{ insight.title }}</strong>{{ insight.description }}</span></li>
-                  }
-                </ul>
-              }
-              <div class="task-meta">{{ task.provider || 'AI provider' }} · {{ task.attempts }} attempt{{ task.attempts === 1 ? '' : 's' }}</div>
-            } @else {
-              <p class="task-description task-error">{{ task.error || 'Analysis failed after all retries.' }}</p>
-              <div class="task-meta">Moved to dead-letter queue · {{ task.attempts }} attempts</div>
-            }
-          </article>
-        } @empty {
-          <div class="empty-task">
-            <span class="empty-symbol">⌁</span>
-            <p>No analysis jobs yet.</p>
-            <span>Select log entries and send them for review.</span>
-          </div>
-        }
-      </div>
-      <footer class="panel-footer">
-        <span>Live status refresh every 2.5s</span>
-        <span><span class="status-pulse"></span> Worker online</span>
-      </footer>
-    </aside>
-  </section>
-
-  <footer class="page-footer">
-    <span>SMARTLOG ANALYZER <span class="brand-period">/</span> LOCAL WORKSPACE</span>
-    <span>Logs stay yours. Insights are a starting point.</span>
-  </footer>
-</main>
-<router-outlet />
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>
