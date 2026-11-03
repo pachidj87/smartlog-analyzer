@@ -106,7 +106,7 @@ Todas las rutas usan el prefijo `/api`. Los errores comparten esta estructura:
 | `POST` | `/api/logs` | Ingerir un log (`service`, `timestamp`, `level`, `message`, `metadata` opcional) |
 | `GET` | `/api/logs` | Listar logs con filtros y paginación |
 | `GET` | `/api/logs/stats` | Agrupar por `groupBy=service\|level` y rango opcional |
-| `POST` | `/api/logs/analyze` | Encolar `{ logIds, prompt? }`; el prompt opcional admite hasta 4000 caracteres y responde `202` |
+| `POST` | `/api/logs/analyze` | Encolar `{ logIds, prompt? }`; el prompt es opcional en la API (hasta 4000 caracteres), pero la interfaz web lo exige; responde `202` |
 | `GET` | `/api/analysis` | Listar análisis con paginación y filtro opcional por estado |
 | `GET` | `/api/analysis/dead-letter` | Consultar trabajos fallidos, solo lectura |
 | `GET` | `/api/analysis/{id}` | Consultar estado y resultado de un análisis |
@@ -166,6 +166,7 @@ La respuesta del modelo debe cumplir el contrato JSON documentado (`summary` e `
 | `AI_PROVIDER`, `AI_FALLBACK_PROVIDER` | Proveedores de IA principal y respaldo |
 | `AI_PROVIDER_<NAME>_URL`, `AI_PROVIDER_<NAME>_HEALTH_URL`, `AI_PROVIDER_<NAME>_API_KEY` | Endpoint, salud y clave de cada proveedor |
 | `AI_PROVIDER_OPENAI_MODEL`, `AI_PROVIDER_ANTHROPIC_MODEL` | Modelos de OpenAI y Anthropic |
+| `AI_PROVIDER_GEMINI_MODEL` | Modelo de Gemini; `AI_PROVIDER_GEMINI_URL` lo interpola (por defecto `gemini-flash-lite-latest`) |
 | `AI_REQUEST_TIMEOUT_MS`, `AI_HEALTH_TIMEOUT_MS` | Timeouts de las peticiones de IA |
 | `AI_RETRY_ATTEMPTS`, `AI_RETRY_BACKOFF_MS` | Reintentos y espera exponencial de BullMQ |
 | `HEALTH_CHECK_MEMORY_HEAP_LIMIT`, `HEALTH_CHECK_MEMORY_RSS_LIMIT` | Límites de memoria en MiB |

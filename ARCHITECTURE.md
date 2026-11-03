@@ -206,7 +206,7 @@ El contrato de respuesta validado es:
 
 Se intenta primero con el proveedor principal y luego con el de respaldo si falla. El registro de proveedores registra cada fallo; si ambos fallan, devuelve un error a BullMQ, que aplica reintentos exponenciales. Al agotarse, el trabajo se marca como fallido y se mueve a la cola de fallos. El endpoint de salud consulta solo el proveedor principal; la disponibilidad del respaldo no oculta un fallo del principal.
 
-OpenAI usa `AI_PROVIDER_OPENAI_URL`, `AI_PROVIDER_OPENAI_HEALTH_URL`, `AI_PROVIDER_OPENAI_API_KEY` y `AI_PROVIDER_OPENAI_MODEL`. Anthropic usa las variables equivalentes `AI_PROVIDER_ANTHROPIC_*`. Gemini usa `AI_PROVIDER_GEMINI_URL`, `AI_PROVIDER_GEMINI_HEALTH_URL` y `AI_PROVIDER_GEMINI_API_KEY`.
+OpenAI usa `AI_PROVIDER_OPENAI_URL`, `AI_PROVIDER_OPENAI_HEALTH_URL`, `AI_PROVIDER_OPENAI_API_KEY` y `AI_PROVIDER_OPENAI_MODEL`. Anthropic usa las variables equivalentes `AI_PROVIDER_ANTHROPIC_*`. Gemini usa `AI_PROVIDER_GEMINI_URL` (que interpola `AI_PROVIDER_GEMINI_MODEL`, por defecto `gemini-flash-lite-latest`), `AI_PROVIDER_GEMINI_HEALTH_URL` y `AI_PROVIDER_GEMINI_API_KEY`.
 
 ## Logs estructurados
 
@@ -224,7 +224,7 @@ OpenAI usa `AI_PROVIDER_OPENAI_URL`, `AI_PROVIDER_OPENAI_HEALTH_URL`, `AI_PROVID
 
 La aplicación Angular cuenta con rutas `/logs` y `/analyses`; `''` y `**` redirigen a `/logs`. El tema claro se implementa con propiedades CSS en `src/web/src/styles.scss` (`--surface`, `--text`, `--accent`, `--danger`, `--radius`, `--space-*`). Cada funcionalidad conserva sus estilos para evitar agotar el presupuesto de la hoja global.
 
-- **Logs**: filtros por `service`, `level`, `from` y `to`; formulario de ingesta; tabla seleccionable; prompt opcional para la acción de análisis; paginación de 10/20/50 elementos con anterior/siguiente y rango. Si la página recibida está vacía y `offset > 0`, calcula la última página válida y vuelve a consultarla si cambia.
+- **Logs**: filtros por `service`, `level`, `from` y `to`; formulario de ingesta; tabla seleccionable; al marcar registros aparece el campo de prompt, obligatorio en la interfaz (no vacío, máximo 4.000 caracteres) y validado antes de enviar con «Analizar seleccionados»; paginación de 10/20/50 elementos con anterior/siguiente y rango. Si la página recibida está vacía y `offset > 0`, calcula la última página válida y vuelve a consultarla si cambia.
 - **Análisis**: filtro por estado, lista paginada, indicadores por estado, resultado con proveedor/resumen/insights, error terminal, cola de fallos y actualización cada 2,5 segundos mientras haya trabajos `queued` o `processing`. Actualiza cada trabajo pendiente mediante `GET /api/analysis/{id}` y detiene la consulta cuando no quedan pendientes o se destruye el componente.
 
 `LogsApiService` centraliza las llamadas HTTP, omite filtros vacíos y asigna la fecha actual a la ingesta cuando no se especifica. Los errores muestran el campo compartido `{ message }` y no un mensaje de transporte genérico.
@@ -260,6 +260,7 @@ El Dockerfile multi-stage construye con Node Alpine y usa Nginx Alpine para serv
 | `AI_PROVIDER_<NAME>_HEALTH_URL` | Endpoint de salud del proveedor |
 | `AI_PROVIDER_<NAME>_API_KEY` | Credencial del proveedor |
 | `AI_PROVIDER_OPENAI_MODEL`, `AI_PROVIDER_ANTHROPIC_MODEL` | Modelos de OpenAI y Anthropic |
+| `AI_PROVIDER_GEMINI_MODEL` | Modelo de Gemini, interpolado en `AI_PROVIDER_GEMINI_URL` |
 | `AI_REQUEST_TIMEOUT_MS`, `AI_HEALTH_TIMEOUT_MS` | Timeouts de las peticiones |
 | `AI_RETRY_ATTEMPTS`, `AI_RETRY_BACKOFF_MS` | Política de reintentos/backoff de BullMQ |
 | `HEALTH_CHECK_MEMORY_HEAP_LIMIT`, `HEALTH_CHECK_MEMORY_RSS_LIMIT` | Límites de salud en MiB |
