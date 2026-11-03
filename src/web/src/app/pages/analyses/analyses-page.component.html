@@ -49,16 +49,20 @@
         @for (task of analyses(); track task.id) {
           <li class="analyses__item">
             <div class="analyses__item-head">
-              <code class="analyses__id">{{ task.id }}</code>
-              <span class="analyses__badge" [attr.data-status]="task.status">
-                {{ statusLabel(task.status) }}
-              </span>
-              <span class="analyses__meta">
-                {{ task.logIds.length }} registro(s) · {{ task.attempts }} intento(s)
-              </span>
-              <span class="analyses__meta">
-                {{ task.updatedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
-              </span>
+              <div>
+                <code class="analyses__id">{{ task.id }}</code>
+                <span class="analyses__badge" [attr.data-status]="task.status">
+                  {{ statusLabel(task.status) }}
+                </span>
+              </div>
+              <div>
+                <span class="analyses__meta">
+                  {{ task.logIds.length }} registro(s) · {{ task.attempts }} intento(s)
+                </span>
+                <span class="analyses__meta">
+                  {{ task.updatedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
+                </span>
+              </div>
             </div>
 
             @if (task.provider) {

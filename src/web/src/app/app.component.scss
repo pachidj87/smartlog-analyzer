@@ -24,60 +24,60 @@
   font-weight: 700;
   letter-spacing: -0.01em;
   text-decoration: none;
-}
 
-.brand-period {
-  color: var(--accent, #2f6fed);
-}
+  &-period {
+    color: var(--accent, #2f6fed);
+  }
 
-.brand-mark {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 1rem;
-}
+  &-mark {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 1rem;
+  }
 
-.brand-mark i {
-  display: block;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--accent, #2f6fed);
-}
+  &-mark i {
+    display: block;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent, #2f6fed);
+  }
 
-.brand-mark i:nth-child(1) {
-  height: 40%;
-}
+  &-mark i:nth-child(1) {
+    height: 40%;
+  }
 
-.brand-mark i:nth-child(2) {
-  height: 70%;
-}
+  &-mark i:nth-child(2) {
+    height: 70%;
+  }
 
-.brand-mark i:nth-child(3) {
-  height: 100%;
+  &-mark i:nth-child(3) {
+    height: 100%;
+  }
 }
 
 .nav {
   display: inline-flex;
   gap: var(--space-2, 0.5rem);
-}
 
-.nav__link {
-  padding: 0.35rem 0.8rem;
-  border-radius: 999px;
-  color: var(--text-muted, #55607a);
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-}
+  &__link {
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    color: var(--text-muted, #55607a);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
 
-.nav__link:hover {
-  background: var(--surface-muted, #eef1f7);
-  color: var(--text, #1d2433);
-}
+  &__link:hover {
+    background: var(--surface-muted, #eef1f7);
+    color: var(--text, #1d2433);
+  }
 
-.nav__link--active {
-  background: var(--accent-soft, #eef4ff);
-  color: var(--accent-strong, #1f4fbf);
+  &__link--active {
+    background: var(--accent-soft, #eef4ff);
+    color: var(--accent-strong, #1f4fbf);
+  }
 }
 
 .topbar-meta {
@@ -88,21 +88,21 @@
   color: var(--text-muted, #55607a);
   font-size: 0.72rem;
   letter-spacing: 0.06em;
-}
 
-.topbar-meta a {
-  color: var(--accent-strong, #1f4fbf);
-  text-decoration: none;
-}
+  & a {
+    color: var(--accent-strong, #1f4fbf);
+    text-decoration: none;
+  }
 
-.topbar-meta a:hover {
-  text-decoration: underline;
-}
+  & a:hover {
+    text-decoration: underline;
+  }
 
-.topbar-divider {
-  width: 1px;
-  height: 0.9rem;
-  background: var(--border, #d3d9e6);
+  .topbar-divider {
+    width: 1px;
+    height: 0.9rem;
+    background: var(--border, #d3d9e6);
+  }
 }
 
 .live-dot {
