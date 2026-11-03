@@ -1,0 +1,137 @@
+<section class="analyses">
+  <header class="analyses__header">
+    <div>
+      <h1 class="analyses__title">Analyses</h1>
+      <p class="analyses__subtitle">
+        Track queued jobs, review AI results and inspect dead letters.
+      </p>
+    </div>
+    <span class="analyses__counter">{{ total() }} analyses</span>
+  </header>
+
+  @if (error()) {
+    <p class="analyses__banner analyses__banner--error" role="alert">
+      {{ error() }}
+    </p>
+  }
+
+  <div class="analyses__card">
+    <div class="analyses__toolbar">
+      <label class="analyses__field">
+        <span>Status</span>
+        <select
+          name="statusFilter"
+          [(ngModel)]="statusFilter"
+          (change)="applyStatusFilter()"
+        >
+          <option value="">Any status</option>
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ status }}</option>
+          }
+        </select>
+      </label>
+
+      @if (pendingCount() > 0) {
+        <span class="analyses__polling">
+          {{ pendingCount() }} job(s) polling every 2.5 s
+        </span>
+      }
+    </div>
+
+    @if (loading()) {
+      <p class="analyses__state">Loading analyses…</p>
+    } @else if (analyses().length === 0) {
+      <p class="analyses__state">
+        No analyses yet. Select logs on the Logs page and queue one.
+      </p>
+    } @else {
+      <ul class="analyses__list">
+        @for (task of analyses(); track task.id) {
+          <li class="analyses__item">
+            <div class="analyses__item-head">
+              <code class="analyses__id">{{ task.id }}</code>
+              <span class="analyses__badge" [attr.data-status]="task.status">
+                {{ task.status }}
+              </span>
+              <span class="analyses__meta">
+                {{ task.logIds.length }} log(s) · {{ task.attempts }} attempt(s)
+              </span>
+              <span class="analyses__meta">
+                {{ task.updatedAt | date: 'yyyy-MM-dd HH:mm:ss' }}
+              </span>
+            </div>
+
+            @if (task.provider) {
+              <p class="analyses__meta">Provider: {{ task.provider }}</p>
+            }
+
+            @if (task.status === 'failed' && task.error) {
+              <p class="analyses__error">{{ task.error }}</p>
+            }
+
+            @if (task.result; as result) {
+              <p class="analyses__summary">{{ result.summary }}</p>
+              @if (result.insights.length > 0) {
+                <ul class="analyses__insights">
+                  @for (insight of result.insights; track insight.title) {
+                    <li>
+                      <strong>{{ insight.title }}</strong>
+                      @if (insight.severity) {
+                        <span
+                          class="analyses__severity"
+                          [attr.data-severity]="insight.severity"
+                        >
+                          {{ insight.severity }}
+                        </span>
+                      }
+                      <span class="analyses__insight-body">
+                        {{ insight.description }}
+                      </span>
+                    </li>
+                  }
+                </ul>
+              }
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    <app-pagination
+      [total]="total()"
+      [limit]="limit()"
+      [offset]="offset()"
+      (pageChange)="changePage($event)"
+    />
+  </div>
+
+  <div class="analyses__card">
+    <h2 class="analyses__card-title">Dead letters</h2>
+    <p class="analyses__subtitle">
+      Jobs that exhausted every retry. They are read-only and kept for triage.
+    </p>
+
+    @if (deadLetterError()) {
+      <p class="analyses__banner analyses__banner--error" role="alert">
+        {{ deadLetterError() }}
+      </p>
+    }
+
+    @if (deadLetters().length === 0 && !deadLetterError()) {
+      <p class="analyses__state">No dead letters. The queue is healthy.</p>
+    } @else {
+      <ul class="analyses__dead-list">
+        @for (job of deadLetters(); track job.id) {
+          <li class="analyses__dead-item">
+            <code class="analyses__id">{{ job.analysisId }}</code>
+            <span class="analyses__meta">{{ job.attempts }} attempt(s)</span>
+            <span class="analyses__meta">
+              {{ job.createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}
+            </span>
+            <p class="analyses__error">{{ job.failedReason }}</p>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</section>
