@@ -1,4 +1,8 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  INestApplication,
+  ValidationPipe,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
 
@@ -22,6 +26,24 @@ describe('POST /api/logs', () => {
       total: 1,
       limit: 1,
       offset: 2,
+    }),
+    getStats: jest.fn().mockImplementation((query) => {
+      if (
+        query.from &&
+        query.to &&
+        new Date(query.from) > new Date(query.to)
+      ) {
+        throw new BadRequestException(
+          'from must be earlier than or equal to to',
+        );
+      }
+      return {
+        groupBy: query.groupBy,
+        from: query.from ?? null,
+        to: query.to ?? null,
+        total: 3,
+        buckets: [{ key: 'payment-api', count: 3 }],
+      };
     }),
   };
 
@@ -134,6 +156,58 @@ describe('POST /api/logs', () => {
         level: 'error',
         limit: 1,
         offset: 2,
+      }),
+    );
+  });
+
+  it('aggregates logs by service within an inclusive date range', async () => {
+    await request(app.getHttpServer())
+      .get('/api/logs/stats')
+      .query({
+        groupBy: 'service',
+        from: '2026-11-01T00:00:00.000Z',
+        to: '2026-11-03T00:00:00.000Z',
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toEqual({
+          groupBy: 'service',
+          from: '2026-11-01T00:00:00.000Z',
+          to: '2026-11-03T00:00:00.000Z',
+          total: 3,
+          buckets: [{ key: 'payment-api', count: 3 }],
+        });
+      });
+
+    expect(logsService.getStats).toHaveBeenCalledWith(
+      expect.objectContaining({ groupBy: 'service' }),
+    );
+  });
+
+  it.each([
+    ['an unsupported groupBy', { groupBy: 'message' }, '/api/logs/stats?groupBy=message'],
+    ['a non-date from', { from: 'not-a-date' }, '/api/logs/stats?from=not-a-date'],
+    [
+      'a reversed range',
+      {
+        from: '2026-11-03T00:00:00.000Z',
+        to: '2026-11-01T00:00:00.000Z',
+      },
+      '/api/logs/stats?from=2026-11-03T00%3A00%3A00.000Z&to=2026-11-01T00%3A00%3A00.000Z',
+    ],
+  ])('rejects %s on the stats endpoint', async (_label, query, path) => {
+    const response = await request(app.getHttpServer())
+      .get('/api/logs/stats')
+      .query(query)
+      .expect(400);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: expect.anything(),
+        path,
+        timestamp: expect.any(String),
       }),
     );
   });

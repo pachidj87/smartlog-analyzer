@@ -11,6 +11,7 @@ import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { CreateLogDto } from './dto/create-log.dto';
 import { ListLogsQueryDto } from './dto/list-logs-query.dto';
+import { LogStatsQueryDto } from './dto/log-stats-query.dto';
 import { LogsService } from './logs.service';
 
 @ApiTags('Logs')
@@ -22,6 +23,19 @@ export class LogsController {
   @ApiOperation({ summary: 'Ingest one log entry' })
   create(@Body() dto: CreateLogDto) {
     return this.logsService.create(dto);
+  }
+
+  @Get('stats')
+  @ApiOperation({ summary: 'Aggregate logs by service or level' })
+  @ApiQuery({
+    name: 'groupBy',
+    required: false,
+    enum: ['service', 'level'],
+  })
+  @ApiQuery({ name: 'from', required: false, format: 'date-time' })
+  @ApiQuery({ name: 'to', required: false, format: 'date-time' })
+  findStats(@Query() query: LogStatsQueryDto) {
+    return this.logsService.getStats(query);
   }
 
   @Get()
