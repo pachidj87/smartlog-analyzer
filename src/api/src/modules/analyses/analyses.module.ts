@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { HttpModule, HttpService } from '@nestjs/axios';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -77,16 +77,20 @@ import { ANALYSIS_PROVIDERS, LOGS_SERVICE } from './symbols';
           config.get<string>('AI_FALLBACK_PROVIDER'),
         ].filter((name): name is string => Boolean(name));
         const providers = names.map((name) => {
-          switch (name.toLowerCase()) {
-            case ProviderName.ANTHROPIC:
+          switch (name.trim().toLowerCase()) {
+            case ProviderName.ANTHROPIC.toLowerCase():
               return new AnthropicAnalysisProvider(http, config);
-            case ProviderName.GEMINI:
+            case ProviderName.GEMINI.toLowerCase():
               return new GeminiAnalysisProvider(http, config);
-            case ProviderName.OPENAI:
-            default:
+            case ProviderName.OPENAI.toLowerCase():
               return new OpenAiAnalysisProvider(http, config);
+            default: {
+              const logger = new Logger(AnalysesModule.name);
+              logger.warn(`Unknown AI provider "${name}"`);
+              return null;
+            }
           }
-        });
+        }).filter((provider): provider is NonNullable<typeof provider> => provider !== null);
         return providers;
       },
     },

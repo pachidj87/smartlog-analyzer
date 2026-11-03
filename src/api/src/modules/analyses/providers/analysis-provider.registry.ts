@@ -31,7 +31,7 @@ export class AnalysisProviderRegistry {
     const failures: string[] = [];
 
     for (const name of candidates) {
-      const provider = this.providers.find((candidate) => candidate.name === name);
+      const provider = this.findProvider(name);
       if (!provider) {
         this.logger.warn(`AI provider adapter is not registered: ${name}`);
         failures.push(name);
@@ -40,7 +40,7 @@ export class AnalysisProviderRegistry {
 
       try {
         const result = await provider.analyze(logs);
-        return { result, provider: name };
+        return { result, provider: provider.name };
       } catch (error) {
         failures.push(name);
         if (name === activeName && fallbackName && fallbackName !== activeName) {
@@ -67,9 +67,7 @@ export class AnalysisProviderRegistry {
 
   async checkActiveProvider(): Promise<void> {
     const activeName = this.config.get<string>('AI_PROVIDER');
-    const provider = this.providers.find(
-      (candidate) => candidate.name === activeName,
-    );
+    const provider = this.findProvider(activeName);
 
     if (!activeName || !provider) {
       throw new ServiceUnavailableException(
@@ -78,6 +76,18 @@ export class AnalysisProviderRegistry {
     }
 
     await provider.checkHealth();
+  }
+
+  private findProvider(
+    name: string | undefined,
+  ): AnalysisProviderInterface | undefined {
+    if (!name) {
+      return undefined;
+    }
+    const normalized = name.trim().toLowerCase();
+    return this.providers.find(
+      (candidate) => candidate.name.toLowerCase() === normalized,
+    );
   }
 
   private errorMessage(error: unknown): string {

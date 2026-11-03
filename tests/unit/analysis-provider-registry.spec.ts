@@ -6,11 +6,92 @@ import {
   AnalysisProviderRegistry,
 } from '../../src/api/src/modules/analyses/providers/analysis-provider.registry';
 import { AnalysisProviderInterface } from '../../src/api/src/modules/analyses/contracts/analysis-provider.interface';
+import { ProviderName } from '../../src/api/src/modules/analyses/enums';
 import { ANALYSIS_PROVIDERS } from '../../src/api/src/modules/analyses/symbols/analisys-provider.symbol';
 
 describe('AnalysisProviderRegistry', () => {
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it('matches configured provider names case-insensitively', async () => {
+    const result = { summary: 'Case insensitive', insights: [] };
+    const anthropic: AnalysisProviderInterface = {
+      name: ProviderName.ANTHROPIC,
+      analyze: jest.fn().mockResolvedValue(result),
+      checkHealth: jest.fn(),
+    };
+    const config = {
+      get: (key: string) =>
+        key === 'AI_PROVIDER' ? ' anthropic ' : undefined,
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        AnalysisProviderRegistry,
+        { provide: ConfigService, useValue: config },
+        { provide: ANALYSIS_PROVIDERS, useValue: [anthropic] },
+      ],
+    }).compile();
+
+    const registry = moduleRef.get(AnalysisProviderRegistry);
+    await expect(registry.analyze([])).resolves.toEqual({
+      result,
+      provider: ProviderName.ANTHROPIC,
+    });
+
+    await moduleRef.close();
+  });
+
+  it('reports the canonical adapter name instead of the configured spelling', async () => {
+    const result = { summary: 'Canonical', insights: [] };
+    const anthropic: AnalysisProviderInterface = {
+      name: ProviderName.ANTHROPIC,
+      analyze: jest.fn().mockResolvedValue(result),
+      checkHealth: jest.fn(),
+    };
+    const config = {
+      get: (key: string) => (key === 'AI_PROVIDER' ? 'ANTHROPIC' : undefined),
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        AnalysisProviderRegistry,
+        { provide: ConfigService, useValue: config },
+        { provide: ANALYSIS_PROVIDERS, useValue: [anthropic] },
+      ],
+    }).compile();
+
+    const registry = moduleRef.get(AnalysisProviderRegistry);
+    const { provider } = await registry.analyze([]);
+    expect(provider).toBe('Anthropic');
+
+    await moduleRef.close();
+  });
+
+  it('checks the active provider health case-insensitively', async () => {
+    const anthropic: AnalysisProviderInterface = {
+      name: ProviderName.ANTHROPIC,
+      analyze: jest.fn(),
+      checkHealth: jest.fn().mockResolvedValue(undefined),
+    };
+    const config = {
+      get: (key: string) => (key === 'AI_PROVIDER' ? 'aNtHrOpIc' : undefined),
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        AnalysisProviderRegistry,
+        { provide: ConfigService, useValue: config },
+        { provide: ANALYSIS_PROVIDERS, useValue: [anthropic] },
+      ],
+    }).compile();
+
+    const registry = moduleRef.get(AnalysisProviderRegistry);
+    await expect(registry.checkActiveProvider()).resolves.toBeUndefined();
+    expect(anthropic.checkHealth).toHaveBeenCalledTimes(1);
+
+    await moduleRef.close();
   });
 
   it('uses the configured fallback when the active provider fails', async () => {
