@@ -1,0 +1,179 @@
+<section class="logs">
+  <header class="logs__header">
+    <div>
+      <h1 class="logs__title">Logs</h1>
+      <p class="logs__subtitle">
+        Search ingested logs, review details and queue AI analyses.
+      </p>
+    </div>
+    <span class="logs__counter">{{ total() }} logs</span>
+  </header>
+
+  @if (error()) {
+    <p class="logs__banner logs__banner--error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="logs__banner logs__banner--notice">{{ notice() }}</p>
+  }
+
+  <form class="logs__card logs__filters" (ngSubmit)="applyFilters()">
+    <h2 class="logs__card-title">Filters</h2>
+    <div class="logs__grid">
+      <label class="logs__field">
+        <span>Service</span>
+        <input
+          type="text"
+          name="filterService"
+          placeholder="payment-api"
+          [(ngModel)]="filterService"
+        />
+      </label>
+
+      <label class="logs__field">
+        <span>Level</span>
+        <select name="filterLevel" [(ngModel)]="filterLevel">
+          <option value="">Any level</option>
+          @for (level of logLevels; track level) {
+            <option [value]="level">{{ level }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="logs__field">
+        <span>From</span>
+        <input type="date" name="filterFrom" [(ngModel)]="filterFrom" />
+      </label>
+
+      <label class="logs__field">
+        <span>To</span>
+        <input type="date" name="filterTo" [(ngModel)]="filterTo" />
+      </label>
+    </div>
+
+    <div class="logs__actions">
+      <button type="submit" class="logs__button logs__button--primary">
+        Apply filters
+      </button>
+      <button
+        type="button"
+        class="logs__button"
+        (click)="resetFilters()"
+      >
+        Reset
+      </button>
+    </div>
+  </form>
+
+  <form class="logs__card logs__ingest" (ngSubmit)="ingest()">
+    <h2 class="logs__card-title">Ingest a log</h2>
+    <div class="logs__grid">
+      <label class="logs__field">
+        <span>Service</span>
+        <input
+          type="text"
+          name="newService"
+          required
+          placeholder="payment-api"
+          [(ngModel)]="newService"
+        />
+      </label>
+
+      <label class="logs__field">
+        <span>Level</span>
+        <select name="newLevel" [(ngModel)]="newLevel">
+          @for (level of logLevels; track level) {
+            <option [value]="level">{{ level }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="logs__field logs__field--wide">
+        <span>Message</span>
+        <input
+          type="text"
+          name="newMessage"
+          required
+          placeholder="Downstream request failed"
+          [(ngModel)]="newMessage"
+        />
+      </label>
+    </div>
+
+    <div class="logs__actions">
+      <button
+        type="submit"
+        class="logs__button logs__button--primary"
+        [disabled]="submitting()"
+      >
+        Store log
+      </button>
+    </div>
+  </form>
+
+  <div class="logs__card logs__table-card">
+    <div class="logs__table-head">
+      <h2 class="logs__card-title">Recent logs</h2>
+      <button
+        type="button"
+        class="logs__button logs__button--primary"
+        [disabled]="submitting() || selectedIds().size === 0"
+        (click)="analyzeSelected()"
+      >
+        Analyze selected ({{ selectedIds().size }})
+      </button>
+    </div>
+
+    @if (loading()) {
+      <p class="logs__state">Loading logs…</p>
+    } @else if (logs().length === 0) {
+      <p class="logs__state">
+        No logs yet. Ingest one above or adjust the filters.
+      </p>
+    } @else {
+      <div class="logs__table-scroll">
+        <table class="logs__table">
+          <thead>
+            <tr>
+              <th scope="col" class="logs__check-column"></th>
+              <th scope="col">Timestamp</th>
+              <th scope="col">Service</th>
+              <th scope="col">Level</th>
+              <th scope="col">Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of logs(); track log.id) {
+              <tr>
+                <td class="logs__check-column">
+                  <input
+                    type="checkbox"
+                    [checked]="selectedIds().has(log.id)"
+                    [attr.aria-label]="'Select log ' + log.id"
+                    (change)="toggleLog(log.id, $any($event.target).checked)"
+                  />
+                </td>
+                <td class="logs__timestamp">
+                  {{ log.timestamp | date: 'yyyy-MM-dd HH:mm:ss' }}
+                </td>
+                <td class="logs__service">{{ log.service }}</td>
+                <td>
+                  <span class="logs__level" [attr.data-level]="log.level">
+                    {{ log.level }}
+                  </span>
+                </td>
+                <td class="logs__message">{{ log.message }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <app-pagination
+      [total]="total()"
+      [limit]="limit()"
+      [offset]="offset()"
+      (pageChange)="changePage($event)"
+    />
+  </div>
+</section>
