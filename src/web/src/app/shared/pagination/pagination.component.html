@@ -1,10 +1,10 @@
 <div class="pagination">
   <span class="pagination__range">
-    Showing {{ rangeStart() }}–{{ rangeEnd() }} of {{ total() }}
+    Mostrando {{ rangeStart() }}–{{ rangeEnd() }} de {{ total() }}
   </span>
 
   <label class="pagination__size">
-    <span class="pagination__size-label">Per page</span>
+    <span class="pagination__size-label">Por página</span>
     <select
       class="pagination__select"
       [value]="limit()"
@@ -23,7 +23,7 @@
       [disabled]="!canGoPrevious()"
       (click)="goPrevious()"
     >
-      Previous
+      Anterior
     </button>
     <button
       type="button"
@@ -31,7 +31,7 @@
       [disabled]="!canGoNext()"
       (click)="goNext()"
     >
-      Next
+      Siguiente
     </button>
   </div>
 </div>

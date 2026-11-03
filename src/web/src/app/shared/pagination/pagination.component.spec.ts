@@ -33,13 +33,13 @@ describe('PaginationComponent', () => {
   it('shows the visible range for the current page', () => {
     render(84, 20, 0);
 
-    expect(text()).toContain('Showing 1–20 of 84');
+    expect(text()).toContain('Mostrando 1–20 de 84');
   });
 
   it('shows the last partial page range', () => {
     render(84, 20, 80);
 
-    expect(text()).toContain('Showing 81–84 of 84');
+    expect(text()).toContain('Mostrando 81–84 de 84');
   });
 
   it('disables previous on the first page and next on the last page', () => {

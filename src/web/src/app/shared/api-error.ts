@@ -15,8 +15,10 @@ export function describeHttpError(error: unknown): string {
     if (Array.isArray(payload) && payload.length > 0) {
       return payload.join(', ');
     }
-    return error.message;
+    return 'No se pudo completar la solicitud. Comprueba la conexión e inténtalo de nuevo.';
   }
 
-  return error instanceof Error ? error.message : 'Unexpected request error';
+  return error instanceof Error
+    ? error.message
+    : 'Se produjo un error inesperado en la solicitud.';
 }

@@ -85,7 +85,7 @@ describe('AnalysesPageComponent', () => {
 
     fixture.detectChanges();
 
-    expect(text()).toContain('completed');
+    expect(text()).toContain('Completado');
     expect(text()).toContain('OpenAI');
     expect(text()).toContain('Repeated payment timeouts');
     expect(text()).toContain('Timeout spike');
@@ -103,7 +103,7 @@ describe('AnalysesPageComponent', () => {
 
     expect(api.getAnalysis).toHaveBeenCalledTimes(1);
     expect(api.getAnalysis).toHaveBeenCalledWith('analysis-1');
-    expect(text()).toContain('completed');
+    expect(text()).toContain('Completado');
 
     tick(ANALYSIS_POLL_INTERVAL_MS * 3);
 
@@ -141,9 +141,9 @@ describe('AnalysesPageComponent', () => {
 
     fixture.detectChanges();
 
-    expect(text()).toContain('failed');
+    expect(text()).toContain('Fallido');
     expect(text()).toContain('Provider timed out after 30s');
-    expect(text()).toContain('3 attempt(s)');
+    expect(text()).toContain('3 intento(s)');
   });
 
   it('renders dead letters with reason and attempts', () => {
@@ -162,7 +162,7 @@ describe('AnalysesPageComponent', () => {
 
     expect(text()).toContain('analysis-9');
     expect(text()).toContain('Provider returned an unexpected payload');
-    expect(text()).toContain('5 attempt(s)');
+    expect(text()).toContain('5 intento(s)');
   });
 
   it('reports the API message when the list request fails', () => {

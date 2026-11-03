@@ -127,6 +127,26 @@ export class AnalysesPageComponent implements OnInit {
     return task.status;
   }
 
+  statusLabel(status: AnalysisStatus): string {
+    const labels: Record<AnalysisStatus, string> = {
+      queued: 'En cola',
+      processing: 'En proceso',
+      completed: 'Completado',
+      failed: 'Fallido',
+    };
+    return labels[status];
+  }
+
+  severityLabel(severity: string): string {
+    const labels: Record<string, string> = {
+      low: 'Baja',
+      medium: 'Media',
+      high: 'Alta',
+      critical: 'Crítica',
+    };
+    return labels[severity] ?? severity;
+  }
+
   private syncPolling(): void {
     if (this.pendingCount() === 0) {
       this.stopPolling();

@@ -1,12 +1,12 @@
 <section class="analyses">
   <header class="analyses__header">
     <div>
-      <h1 class="analyses__title">Analyses</h1>
+      <h1 class="analyses__title">Análisis</h1>
       <p class="analyses__subtitle">
-        Track queued jobs, review AI results and inspect dead letters.
+        Consulta los trabajos, revisa los resultados de IA y los trabajos fallidos.
       </p>
     </div>
-    <span class="analyses__counter">{{ total() }} analyses</span>
+    <span class="analyses__counter">{{ total() }} análisis</span>
   </header>
 
   @if (error()) {
@@ -18,31 +18,31 @@
   <div class="analyses__card">
     <div class="analyses__toolbar">
       <label class="analyses__field">
-        <span>Status</span>
+        <span>Estado</span>
         <select
           name="statusFilter"
           [(ngModel)]="statusFilter"
           (change)="applyStatusFilter()"
         >
-          <option value="">Any status</option>
+          <option value="">Todos los estados</option>
           @for (status of statuses; track status) {
-            <option [value]="status">{{ status }}</option>
+            <option [value]="status">{{ statusLabel(status) }}</option>
           }
         </select>
       </label>
 
       @if (pendingCount() > 0) {
         <span class="analyses__polling">
-          {{ pendingCount() }} job(s) polling every 2.5 s
+          Actualizando {{ pendingCount() }} trabajo(s) cada 2,5 s
         </span>
       }
     </div>
 
     @if (loading()) {
-      <p class="analyses__state">Loading analyses…</p>
+      <p class="analyses__state">Cargando análisis…</p>
     } @else if (analyses().length === 0) {
       <p class="analyses__state">
-        No analyses yet. Select logs on the Logs page and queue one.
+        Todavía no hay análisis. Selecciona registros en la página Registros e inicia uno.
       </p>
     } @else {
       <ul class="analyses__list">
@@ -51,18 +51,18 @@
             <div class="analyses__item-head">
               <code class="analyses__id">{{ task.id }}</code>
               <span class="analyses__badge" [attr.data-status]="task.status">
-                {{ task.status }}
+                {{ statusLabel(task.status) }}
               </span>
               <span class="analyses__meta">
-                {{ task.logIds.length }} log(s) · {{ task.attempts }} attempt(s)
+                {{ task.logIds.length }} registro(s) · {{ task.attempts }} intento(s)
               </span>
               <span class="analyses__meta">
-                {{ task.updatedAt | date: 'yyyy-MM-dd HH:mm:ss' }}
+                {{ task.updatedAt | date: 'dd/MM/yyyy HH:mm:ss' }}
               </span>
             </div>
 
             @if (task.provider) {
-              <p class="analyses__meta">Provider: {{ task.provider }}</p>
+              <p class="analyses__meta">Proveedor: {{ task.provider }}</p>
             }
 
             @if (task.status === 'failed' && task.error) {
@@ -81,7 +81,7 @@
                           class="analyses__severity"
                           [attr.data-severity]="insight.severity"
                         >
-                          {{ insight.severity }}
+                          {{ severityLabel(insight.severity) }}
                         </span>
                       }
                       <span class="analyses__insight-body">
@@ -106,9 +106,9 @@
   </div>
 
   <div class="analyses__card">
-    <h2 class="analyses__card-title">Dead letters</h2>
+    <h2 class="analyses__card-title">Trabajos fallidos (DLQ)</h2>
     <p class="analyses__subtitle">
-      Jobs that exhausted every retry. They are read-only and kept for triage.
+      Trabajos que agotaron sus reintentos. Se conservan para su revisión y no se pueden modificar aquí.
     </p>
 
     @if (deadLetterError()) {
@@ -118,15 +118,15 @@
     }
 
     @if (deadLetters().length === 0 && !deadLetterError()) {
-      <p class="analyses__state">No dead letters. The queue is healthy.</p>
+      <p class="analyses__state">No hay trabajos fallidos. La cola funciona correctamente.</p>
     } @else {
       <ul class="analyses__dead-list">
         @for (job of deadLetters(); track job.id) {
           <li class="analyses__dead-item">
             <code class="analyses__id">{{ job.analysisId }}</code>
-            <span class="analyses__meta">{{ job.attempts }} attempt(s)</span>
+            <span class="analyses__meta">{{ job.attempts }} intento(s)</span>
             <span class="analyses__meta">
-              {{ job.createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}
+              {{ job.createdAt | date: 'dd/MM/yyyy HH:mm:ss' }}
             </span>
             <p class="analyses__error">{{ job.failedReason }}</p>
           </li>

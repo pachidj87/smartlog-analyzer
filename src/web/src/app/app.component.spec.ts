@@ -32,21 +32,30 @@ describe('AppComponent', () => {
     const brand = fixture.nativeElement.querySelector(
       'header .brand',
     ) as HTMLElement;
-    expect(brand.getAttribute('aria-label')).toBe('SmartLog home');
+    expect(brand.getAttribute('aria-label')).toBe('Inicio de SmartLog');
     expect(brand.textContent?.trim().toLowerCase()).toContain('smartlog');
 
     const links = Array.from(
       fixture.nativeElement.querySelectorAll('nav a'),
     ) as HTMLAnchorElement[];
     expect(links.map((link) => link.textContent?.trim())).toEqual([
-      'Logs',
-      'Analyses',
+      'Registros',
+      'Análisis',
     ]);
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/logs',
       '/analyses',
     ]);
     expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
+  });
+
+  it('keeps the analysis prompt out of the header', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('header textarea[name="analysisPrompt"]'),
+    ).toBeNull();
   });
 
   it('maps every expected route', () => {
