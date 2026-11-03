@@ -14,6 +14,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import {
   AnalysisTask,
+  LogLevel,
   LogsApiService,
   LogEntry,
 } from './logs-api.service';
@@ -29,7 +30,14 @@ export class AppComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly watchedAnalysisIds = new Set<string>();
 
-  readonly logLevels = ['verbose', 'debug', 'log', 'warn', 'error', 'fatal'];
+  readonly logLevels: LogLevel[] = [
+    'verbose',
+    'debug',
+    'log',
+    'warn',
+    'error',
+    'fatal',
+  ];
   readonly logs = signal<LogEntry[]>([]);
   readonly tasks = signal<AnalysisTask[]>([]);
   readonly selectedIds = signal<Set<string>>(new Set());
@@ -43,7 +51,7 @@ export class AppComponent implements OnInit {
   readonly pageSize = 20;
 
   service = '';
-  level = 'error';
+  level: LogLevel = 'error';
   message = '';
 
   ngOnInit() {
@@ -53,7 +61,7 @@ export class AppComponent implements OnInit {
   refresh() {
     this.loading.set(true);
     this.error.set('');
-    this.api.listLogs(this.pageSize).subscribe({
+    this.api.listLogs({ limit: this.pageSize, offset: 0 }).subscribe({
       next: (page) => {
         this.logs.set(page.items);
         this.logTotal.set(page.total);
