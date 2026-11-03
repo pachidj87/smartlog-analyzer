@@ -1,97 +1,98 @@
-# SmartLog Analyzer — Architecture
+# SmartLog Analyzer — Arquitectura
 
-## Scope and implementation status
+## Alcance y estado
 
-SmartLog Analyzer is a pnpm monorepo for collecting microservice logs, reviewing them with a configurable external AI provider, and tracking asynchronous analysis jobs.
+SmartLog Analyzer es un monorepo pnpm para recibir logs de microservicios, analizarlos con un proveedor externo de IA configurable y seguir los trabajos asíncronos.
 
-Implemented:
+Implementado:
 
-- NestJS API with DTO validation, consistent HTTP errors, Swagger, MongoDB persistence through TypeORM, Redis-backed Nest cache, and BullMQ analysis and dead-letter queues.
-- Provider-agnostic AI contract with native OpenAI Chat Completions, Anthropic Messages and Gemini `generateContent` adapters, active/fallback selection, health probe, retry/backoff and a dead-letter queue observable through the API.
-- Mongo aggregation endpoint (`GET /api/logs/stats`) grouped by service or level over an optional date range.
-- Angular 19 dashboard with a routed shell, paginated log table with filters and ingestion, analysis list with live polling, and a dead-letter view.
-- Seed and index-creation scripts, a `Makefile`, structured JSON logging with request correlation, and unit, HTTP integration and Angular tests.
+- API NestJS con validación de DTO, errores HTTP uniformes, Swagger, persistencia MongoDB mediante TypeORM, caché Nest respaldada por Redis y colas de análisis y fallos con BullMQ.
+- Contrato de IA independiente del proveedor y adaptadores nativos para OpenAI Chat Completions, Anthropic Messages y Gemini `generateContent`, con proveedor principal y respaldo, comprobación de salud, reintentos y cola de fallos observable mediante la API.
+- Endpoint de agregación MongoDB (`GET /api/logs/stats`) por servicio o nivel y rango de fechas opcional.
+- Panel Angular 19 con navegación, tabla paginada y filtrable de logs, formulario de ingesta, lista de análisis con actualización periódica y vista de cola de fallos.
+- Scripts de migración, índices y seed, `Makefile`, logs JSON estructurados con correlación de solicitudes, y pruebas unitarias, HTTP de integración y Angular.
 
-External AI requests require provider endpoints and credentials in `.env`. The sample keys are placeholders. Without a reachable active provider, the readiness endpoint reports the provider as down and analysis jobs eventually enter the dead-letter queue after retry exhaustion.
+Las peticiones externas de IA requieren endpoints y credenciales configuradas en `.env`. Las claves de ejemplo son marcadores. Sin un proveedor principal accesible, el endpoint de disponibilidad informa que la IA no está disponible y los análisis terminan en la cola de fallos al agotarse los reintentos.
 
-## Monorepo layout
+## Estructura del monorepo
 
 ```text
 smartlog-analyzer/
 ├── src/
-│   ├── api/                       # NestJS API
+│   ├── api/                       # API NestJS
 │   │   └── src/
-│   │       ├── common/            # Filters, errors, logging, validators
-│   │       ├── config/            # Port resolution
-│   │       ├── db/                # DataSource, index definitions, scripts, seeds
+│   │       ├── common/            # Filtros, errores, logs y validadores
+│   │       ├── config/            # Resolución de puertos
+│   │       ├── db/                # DataSource, migraciones, índices, scripts y seeds
 │   │       └── modules/
-│   │           ├── logs/          # Log DTOs, persistence, stats, endpoints
-│   │           ├── analyses/      # Analysis jobs, providers, queues, endpoints
-│   │           └── health/        # API/dependency/provider health
-│   └── web/                       # Angular 19 workspace and dashboard
+│   │           ├── logs/          # DTO, persistencia, estadísticas y rutas
+│   │           ├── analyses/      # Trabajos, proveedores, colas y rutas
+│   │           └── health/        # Salud de API, dependencias y proveedor
+│   └── web/                       # Workspace Angular 19 y panel
 ├── tests/
-│   ├── unit/                      # Unit tests for domain/provider/health/logging behavior
-│   ├── integration/               # HTTP contract and validation tests
-│   └── support/                   # Jest helpers and shims
-├── Dockerfile                     # Multi-stage API, web and proxy images
-├── nginx-proxy.conf.template      # Basic-authenticated HTTP ingress
-├── docker-compose.yml             # Proxy, API, web, MongoDB and Redis
-├── Makefile                       # install/dev/build/test/seed/indexes/up/down/logs
-├── .env.example                   # Placeholder environment values only
+│   ├── unit/                      # Pruebas de dominio, proveedores, salud y logs
+│   ├── integration/               # Contrato HTTP y validaciones
+│   └── support/                   # Helpers y adaptadores de Jest
+├── Dockerfile                     # Imágenes multi-stage de API, web y proxy
+├── nginx-proxy.conf.template      # Entrada HTTP con autenticación básica
+├── docker-compose.yml             # Proxy, API, web, MongoDB y Redis
+├── Makefile                       # Comandos de desarrollo, pruebas y Compose
+├── .env.example                   # Solo valores de ejemplo
 ├── README.md
 └── ARCHITECTURE.md
 ```
 
-pnpm workspaces are declared in `pnpm-workspace.yaml`. Root scripts are the supported entry point for builds and tests. Angular specs are co-located with their components under `src/web/src/app/**` because the Angular karma builder resolves `tsConfig`/`include` relative to the web project; the API suites live under the root `tests/` directory.
+Los workspaces de pnpm se declaran en `pnpm-workspace.yaml`. Los scripts raíz son el punto de entrada para compilar y probar. Las pruebas Angular están junto a sus componentes, bajo `src/web/src/app/**`, porque el builder de Angular resuelve `tsConfig`/`include` desde el proyecto web. Las suites de API están en `tests/`.
 
-## Deployment and request flow
+## Despliegue y flujo de solicitudes
+Ver también Smartlog-Analyzer-Diagram.pdf
 
 ```mermaid
 flowchart LR
-    Browser["Browser · Angular dashboard"]
-    subgraph Compose["Docker Compose private network"]
-        Proxy["proxy · Nginx + Basic Auth"]
+    Browser["Navegador · panel Angular"]
+    subgraph Compose["Red privada de Docker Compose"]
+        Proxy["proxy · Nginx + autenticación básica"]
         Web["web · Nginx + Angular"]
         API["api · NestJS"]
-        Mongo[("mongodb · logs + analyses")]
-        Redis[("redis · cache + BullMQ")]
-        Worker["BullMQ analysis worker"]
-        Active["Active AI adapter"]
-        Fallback["Fallback AI adapter"]
+        Mongo[("mongodb · logs + análisis")]
+        Redis[("redis · caché + BullMQ")]
+        Worker["Worker de análisis BullMQ"]
+        Active["Adaptador IA principal"]
+        Fallback["Adaptador IA de respaldo"]
         DLQ[("analysis-dead-letter-queue")]
         Proxy -->|"HTTP /api"| API
         Proxy -->|"HTTP /"| Web
         API --> Mongo
         API --> Redis
         API -->|"GET /api/logs/stats"| Mongo
-        Browser -->|"poll every 2.5 s"| API
+        Browser -->|"actualización cada 2,5 s"| API
         Redis --> Worker
         Worker --> Active
-        Worker -. "on failure" .-> Fallback
+        Worker -. "si falla" .-> Fallback
         Worker --> Mongo
-        Worker -->|"attempts exhausted"| DLQ
+        Worker -->|"reintentos agotados"| DLQ
         API -->|"GET /api/analysis/dead-letter"| DLQ
     end
-    Browser -->|"localhost:PROXY_PORT · Basic Auth"| Proxy
+    Browser -->|"localhost:PROXY_PORT · autenticación básica"| Proxy
 ```
 
-The browser uses one origin: `http://localhost:${PROXY_PORT}` (8080 by default), with Basic Authentication on dashboard and API routes. Nginx routes `/api/` to NestJS and all other paths to the Angular web container. It removes the inbound `Authorization` header before proxying. API and web ports are not published. MongoDB and Redis bind only to `127.0.0.1` for local development; within Compose, services use DNS names (`api`, `web`, `mongodb`, `redis`) and the container-specific connection URLs from `*_DOCKER` variables. MongoDB data persists in `mongodb_data`; Redis cache and queue data persist in `redis_data`.
+El navegador usa un único origen: `http://localhost:${PROXY_PORT}` (8080 por defecto), con autenticación básica para el panel y la API. Nginx envía `/api/` a NestJS y el resto de rutas al contenedor Angular. El proxy elimina el encabezado `Authorization` antes de reenviar. API y web no publican puertos. MongoDB y Redis solo se enlazan a `127.0.0.1` para desarrollo local; dentro de Compose, los servicios usan los nombres DNS `api`, `web`, `mongodb` y `redis`, junto con las URLs de `*_DOCKER`. Los datos de MongoDB y Redis persisten en los volúmenes `mongodb_data` y `redis_data`.
 
-| Service | Container port | Host port | Purpose |
+| Servicio | Puerto del contenedor | Puerto del host | Propósito |
 |---|---:|---:|---|
-| Reverse proxy | 80 | `PROXY_PORT` (8080 default) | Basic Auth ingress; routes dashboard and API |
-| Web / Nginx | 80 | Not published | Angular dashboard |
-| API | 3000 | Not published | REST endpoints, health and Swagger |
-| MongoDB | 27017 | `127.0.0.1:MONGO_PORT` | Logs and analysis records; local development access |
-| Redis | 6379 | `127.0.0.1:REDIS_PORT` | Nest cache and BullMQ queues; local development access |
+| Proxy inverso | 80 | `PROXY_PORT` (8080 por defecto) | Autenticación básica y rutas del panel/API |
+| Web / Nginx | 80 | No publicado | Panel Angular |
+| API | 3000 | No publicado | REST, salud y Swagger |
+| MongoDB | 27017 | `127.0.0.1:MONGO_PORT` | Logs y registros de análisis; acceso local de desarrollo |
+| Redis | 6379 | `127.0.0.1:REDIS_PORT` | Caché Nest y colas BullMQ; acceso local de desarrollo |
 
-Compose starts the API after MongoDB and Redis pass their health checks. The API container healthcheck calls `/api/health/live`, which only verifies that the process answers. Readiness lives at `/api/health`, where dependency or active-provider failures report 503; Compose deliberately does not gate container health on it, so a third-party AI outage cannot mark the container unhealthy.
+Compose inicia la API cuando MongoDB y Redis pasan sus comprobaciones de salud. La comprobación del contenedor API llama a `/api/health/live`, que verifica únicamente que el proceso responde. `/api/health` informa `503` si falla una dependencia o el proveedor principal; Compose no usa esta comprobación de disponibilidad para determinar la salud del contenedor, de modo que una caída de un proveedor externo no lo marca como no saludable.
 
-The proxy starts after the API and web containers have started. Basic Auth credentials are read from `.env`; an Apache MD5 (`apr1`) htpasswd file is generated at container startup for Nginx compatibility. Basic Auth over plain HTTP does not encrypt credentials, so deploy behind TLS outside local development.
+El proxy se inicia después de la API y web. Las credenciales de autenticación básica salen de `.env`; durante el inicio se genera un archivo htpasswd Apache (`apr1`) compatible con Nginx. La autenticación básica sobre HTTP sin TLS no cifra las credenciales; fuera de desarrollo local, el proxy debe estar detrás de TLS.
 
-## HTTP API
+## API HTTP
 
-All REST routes use the `/api` global prefix. Responses are JSON. Errors have a common shape:
+Todas las rutas REST usan el prefijo global `/api`. Las respuestas son JSON y los errores comparten esta estructura:
 
 ```json
 {
@@ -103,30 +104,30 @@ All REST routes use the `/api` global prefix. Responses are JSON. Errors have a 
 }
 ```
 
-| Method | Route | Success | Behavior |
+| Método | Ruta | Éxito | Comportamiento |
 |---|---|---:|---|
-| `POST` | `/api/logs` | 201 | Validate and persist a log |
-| `GET` | `/api/logs` | 200 | Filter and paginate logs |
-| `GET` | `/api/logs/stats` | 200 | Aggregate logs by service or level over an optional range |
-| `POST` | `/api/logs/analyze` | 202 | Validate log ObjectIds and queue an analysis |
-| `GET` | `/api/analysis` | 200 | Filter and paginate analysis jobs |
-| `GET` | `/api/analysis/dead-letter` | 200 | Read-only dead-letter listing (`limit`, `offset`) |
-| `GET` | `/api/analysis/{id}` | 200 | Get current status, result or terminal error |
-| `GET` | `/api/health` | 200 / 503 | Readiness: MongoDB, Redis cache, active AI provider, memory and API root |
-| `GET` | `/api/health/live` | 200 | Liveness: process is running; no dependency checks |
-| `GET` | `/api/docs` | 200 | Swagger UI; JSON document at `/api/docs-json` |
+| `POST` | `/api/logs` | 201 | Validar y guardar un log |
+| `GET` | `/api/logs` | 200 | Filtrar y paginar logs |
+| `GET` | `/api/logs/stats` | 200 | Agrupar logs por servicio o nivel en un rango opcional |
+| `POST` | `/api/logs/analyze` | 202 | Validar ObjectIds y encolar un análisis |
+| `GET` | `/api/analysis` | 200 | Filtrar y paginar trabajos |
+| `GET` | `/api/analysis/dead-letter` | 200 | Consultar la cola de fallos (`limit`, `offset`), solo lectura |
+| `GET` | `/api/analysis/{id}` | 200 | Consultar estado, resultado o error terminal |
+| `GET` | `/api/health` | 200 / 503 | Disponibilidad de MongoDB, caché Redis, IA, memoria y raíz de API |
+| `GET` | `/api/health/live` | 200 | Comprobar que el proceso sigue activo, sin comprobar dependencias |
+| `GET` | `/api/docs` | 200 | Swagger UI; documento JSON en `/api/docs-json` |
 
-List endpoints accept `limit` (default 20, between 1 and 100) and `offset` (default 0, non-negative). Out-of-range values return `400` instead of being silently clamped. Logs additionally accept `service`, `level`, `from` and `to`; analyses accept `status` (`queued`, `processing`, `completed`, `failed`). `from` must not be later than `to`.
+Las listas aceptan `limit` (20 por defecto, de 1 a 100) y `offset` (0 por defecto, no negativo). Los valores fuera de rango devuelven `400` y no se ajustan silenciosamente. Los logs también admiten `service`, `level`, `from` y `to`; los análisis admiten `status` (`queued`, `processing`, `completed`, `failed`). `from` no puede ser posterior a `to`.
 
-`GET /api/logs/stats?groupBy=service|level&from&to` returns `{ groupBy, from, to, total, buckets: [{ key, count }] }`. Buckets are sorted by `count` descending then `key` ascending, capped at 100, and the range is inclusive on the log event `timestamp`.
+`GET /api/logs/stats?groupBy=service|level&from&to` devuelve `{ groupBy, from, to, total, buckets: [{ key, count }] }`. Los grupos se ordenan por `count` descendente y después por `key` ascendente, con un máximo de 100. El rango incluye el `timestamp` del log.
 
-### Input validation and log model
+### Validación y modelo de log
 
-Controllers accept DTOs decorated with `class-validator`; the global Nest `ValidationPipe` transforms inputs, rejects unknown fields, and returns HTTP 400 for invalid input. A service identifier is a lowercase slug matching `^[a-z0-9]+(?:-[a-z0-9]+)*$` and is limited to 63 characters. Timestamps must be ISO date strings. Messages are trimmed, required, and limited to 10,000 characters.
+Los controladores reciben DTO decorados con `class-validator`; el `ValidationPipe` global transforma entradas, rechaza propiedades desconocidas y responde `400` ante datos inválidos. El identificador de servicio es un slug en minúsculas que coincide con `^[a-z0-9]+(?:-[a-z0-9]+)*$` y tiene un máximo de 63 caracteres. Las fechas deben ser cadenas ISO. `message` es obligatorio, se recorta y admite hasta 10.000 caracteres.
 
-Log levels use NestJS's exported `LOG_LEVELS` and `LogLevel` values; SmartLog does not define a parallel level enum. A log document also includes an ingestion timestamp and optional structured metadata.
+Los niveles de log usan los valores exportados `LOG_LEVELS` y `LogLevel` de NestJS; SmartLog no define otro enum paralelo. Cada documento también incluye la hora de ingesta y metadatos estructurados opcionales.
 
-Example request:
+Ejemplo de solicitud:
 
 ```json
 {
@@ -138,54 +139,61 @@ Example request:
 }
 ```
 
-Swagger schemas are derived from the DTO types by the `@nestjs/swagger` CLI plugin configured in `src/api/nest-cli.json`; DTOs stay focused on validation and no field hand-writes `@ApiProperty`.
+Los esquemas Swagger se derivan de los tipos DTO mediante el plugin CLI `@nestjs/swagger`, configurado en `src/api/nest-cli.json`; no se repiten `@ApiProperty` manualmente en cada campo.
 
-## Persistence: MongoDB and TypeORM
+## Persistencia: MongoDB y TypeORM
 
-`src/api/src/db/data-source.ts` exports the TypeORM MongoDB `DataSourceOptions` consumed by `TypeOrmModule.forRoot(AppDataSource)`. Entity and migration globs resolve from `__dirname`, not `process.cwd()`, so discovery works both from `src/api` in development and from `/app` in the container where the build output lives under `/app/src/api/dist`. `synchronize` is disabled. The `logs` collection stores validated log events; `analyses` stores requested log IDs, provider, job status, attempts, timestamps, result and terminal error.
+`src/api/src/db/data-source.ts` exporta las opciones de `DataSource` MongoDB de TypeORM que consume `TypeOrmModule.forRoot(AppDataSource)`. Los patrones de entidades se resuelven desde `__dirname`, no desde `process.cwd()`, para funcionar tanto al desarrollar desde `src/api` como en el contenedor, donde el build está en `/app/src/api/dist`. `synchronize` está desactivado. La colección `logs` almacena eventos validados; `analyses` guarda IDs de logs, proveedor, estado del trabajo, prompt opcional, intentos, fechas, resultado y error terminal.
 
-Data access is separated into `LogsService` and `AnalysesService` using TypeORM Mongo repositories. Modules expose cross-module collaborators through interfaces and string-free DI tokens: `LogsServiceInterface` is registered under the `LOGS_SERVICE` symbol, and AI adapters under `ANALYSIS_PROVIDERS`, so consumers depend on contracts rather than concrete classes. Mongo health uses the TypeORM Mongo driver's native `ping` command; the SQL-oriented Terminus TypeORM indicator is not used for a Mongo connection.
+El acceso a datos se separa en `LogsService` y `AnalysesService` mediante repositorios TypeORM Mongo. Los módulos exponen colaboradores entre módulos con interfaces y tokens de inyección: `LogsServiceInterface` se registra bajo el símbolo `LOGS_SERVICE` y los adaptadores bajo `ANALYSIS_PROVIDERS`. La comprobación de salud de Mongo usa el comando nativo `ping` del driver Mongo de TypeORM; no se usa el indicador Terminus orientado a SQL.
 
-### Indexes and seed data
+### Migraciones, índices y seeds
 
-TypeORM's Mongo driver has no SQL-style migrations, so the schema concern that matters for read paths — indexes — is a first-class script. `src/api/src/db/indexes.ts` defines five indexes; `src/api/src/db/scripts/create-indexes.ts` applies them idempotently (`pnpm --filter smartlog-api run db:indexes`, `--dry-run` to preview):
+TypeORM no ofrece migraciones SQL para su driver Mongo. Por ello, las migraciones versionadas de SmartLog usan el driver nativo y se registran en la colección `_smartlog_migrations`. Cada unidad tiene `up` y `down`; el runner aplica migraciones pendientes en orden y solo permite revertir la última aplicada, evitando dejar dependencias de índices fuera de orden. Comandos:
 
-| Collection | Index |
-|---|---|
-| `logs` | `timestamp_-1` |
-| `logs` | `service_1_timestamp_-1` |
-| `logs` | `level_1_timestamp_-1` |
-| `analyses` | `status_1_createdAt_-1` |
-| `analyses` | `createdAt_-1` |
+```bash
+pnpm --filter smartlog-api run db:migrate -- --dry-run
+pnpm --filter smartlog-api run db:migrate
+pnpm --filter smartlog-api run db:migrate -- --rollback 002-analysis-indexes
+```
 
-`src/api/src/db/scripts/seed.ts` inserts a deterministic demo dataset (40 logs across four services and five levels over seven days, plus two analyses) and supports `--dry-run` and `--reset` (`pnpm --filter smartlog-api run seed`).
+Las unidades existentes corresponden a las colecciones y rutas de lectura:
 
-## Redis cache and queues
+| Migración | Colección | Índices |
+|---|---|---|
+| `001-log-indexes` | `logs` | `timestamp_-1`, `service_1_timestamp_-1`, `level_1_timestamp_-1` |
+| `002-analysis-indexes` | `analyses` | `status_1_createdAt_-1`, `createdAt_-1` |
 
-`AppModule` registers Nest's official `CacheModule` with `isGlobal: true` and the ioredis store adapter configured from `REDIS_URL`; feature modules inject the standard cache manager without custom wrappers. Controllers use Nest's `CacheInterceptor` for the paginated log list, and the health check verifies the cache through the cache manager API. Cache TTL is configured by `CACHE_TTL_SECONDS`. BullMQ configures its own Redis connection from the same URL.
+El campo `prompt` es opcional y MongoDB no requiere transformar documentos antiguos para incorporarlo. No hay migración de datos para ese campo. `src/api/src/db/indexes.ts` mantiene el catálogo compartido; `db:indexes` sigue disponible para crear los índices directamente de forma idempotente, mientras `db:migrate` registra y permite revertir cada unidad.
 
-BullMQ uses Redis for:
+`src/api/src/db/scripts/seed.ts` inserta un conjunto de demostración reproducible: 40 logs de cuatro servicios y cinco niveles distribuidos en siete días, más dos análisis. `--dry-run` muestra el plan y `--reset` limpia las colecciones `logs` y `analyses` antes de insertar. Sin `--reset`, cada ejecución añade datos.
 
-- `analysis-queue`: queued analysis work.
-- `analysis-dead-letter-queue`: jobs whose attempts are exhausted.
+## Caché Redis y colas
 
-`POST /api/logs/analyze` responds immediately with `202 Accepted` and a task in `queued` state. The worker changes the persisted status to `processing`, then to `completed` with insights or `failed` with a safe error message. The queue defaults to three attempts with exponential backoff starting at 1,000 ms; `AI_RETRY_ATTEMPTS` and `AI_RETRY_BACKOFF_MS` configure the policy. On terminal failure the worker writes the failed status, logs the failure, and adds a durable entry to `analysis-dead-letter-queue` carrying `analysisId`, `failedReason`, `attempts` and the job timestamp.
+`AppModule` registra el `CacheModule` oficial de Nest con `isGlobal: true` y el adaptador ioredis configurado mediante `REDIS_URL`; los módulos funcionales inyectan el gestor de caché estándar sin wrappers propios. Los controladores usan `CacheInterceptor` para las listas paginadas de logs y el chequeo de salud verifica el gestor de caché. El TTL se configura con `CACHE_TTL_SECONDS`. BullMQ usa la misma URL de Redis para su conexión.
 
-Dead letters are exposed read-only through `GET /api/analysis/dead-letter`; requeueing is intentionally a manual operation (re-post the analysis or remove the job).
+BullMQ usa Redis para:
 
-## Provider-agnostic AI
+- `analysis-queue`: análisis pendientes.
+- `analysis-dead-letter-queue`: trabajos que agotaron sus reintentos.
 
-`AnalysisProvider` is the domain interface. Native adapters implement `analyze(logs)` and `checkHealth()` for OpenAI Chat Completions, Anthropic Messages and Gemini `generateContent`. Each requests and reads provider-native JSON content and validates the shared `{summary, insights}` result contract. Responses are traversed by a shared path helper that indexes arrays with numeric path segments (`choices.0.message.content`, `content.0.text`, `candidates.0.content.parts.0.text`).
+`POST /api/logs/analyze` acepta `{ logIds, prompt? }`; el prompt opcional del usuario admite hasta 4.000 caracteres y se guarda con el análisis. La ruta responde inmediatamente con `202 Accepted` y el trabajo en estado `queued`. El worker entrega el prompt y los logs seleccionados al proveedor principal o de respaldo; si no se proporciona, se aplica la solicitud predeterminada de detección de patrones. El worker actualiza el estado a `processing` y luego a `completed` con insights o `failed` con un mensaje de error seguro. La cola usa tres intentos por defecto y espera exponencial desde 1.000 ms; `AI_RETRY_ATTEMPTS` y `AI_RETRY_BACKOFF_MS` configuran la política. Al agotarse los intentos, el worker registra el estado fallido y el error, y agrega a la cola de fallos `analysisId`, `failedReason`, `attempts` y la fecha del trabajo.
 
-Provider names are compared case-insensitively (`trim().toLowerCase()`) but persisted with their canonical spelling (`OpenAI`, `Anthropic`, `Gemini`), so `.env` can stay lowercase while stored records keep a stable value. Unknown configured names register nothing and log a warning instead of silently falling back to OpenAI.
+La cola de fallos se expone como solo lectura en `GET /api/analysis/dead-letter`; volver a encolar es una operación manual.
 
-The request sent to a provider is:
+## IA independiente del proveedor
+
+`AnalysisProvider` es la interfaz de dominio. Los adaptadores implementan `analyze(logs, prompt?)` y `checkHealth()` para OpenAI Chat Completions, Anthropic Messages y Gemini `generateContent`. El prompt opcional complementa las instrucciones de formato de respuesta, se propaga por la cola y se persiste. Cada adaptador solicita y extrae JSON nativo del proveedor y valida el contrato compartido `{summary, insights}`. Un helper común recorre rutas en respuestas con segmentos numéricos para arreglos (`choices.0.message.content`, `content.0.text`, `candidates.0.content.parts.0.text`).
+
+Los nombres se comparan sin distinguir mayúsculas (`trim().toLowerCase()`), pero se persisten en forma canónica (`OpenAI`, `Anthropic`, `Gemini`); así, `.env` puede usar minúsculas sin alterar registros. Un nombre desconocido no registra un adaptador y produce una advertencia, en vez de seleccionar silenciosamente OpenAI.
+
+La solicitud enviada al proveedor contiene:
 
 ```json
 { "logs": [{ "service": "payment-api", "timestamp": "...", "level": "error", "message": "..." }] }
 ```
 
-The validated response contract is:
+El contrato de respuesta validado es:
 
 ```json
 {
@@ -196,93 +204,93 @@ The validated response contract is:
 }
 ```
 
-Execution order is active provider, then fallback provider on active failure. The registry logs each failed provider; if the fallback also fails, it returns an error to BullMQ, which applies exponential retries. Once attempts are exhausted the job is marked failed and moved to the DLQ. The health endpoint probes the active provider only; fallback availability does not mask an unhealthy active provider.
+Se intenta primero con el proveedor principal y luego con el de respaldo si falla. El registro de proveedores registra cada fallo; si ambos fallan, devuelve un error a BullMQ, que aplica reintentos exponenciales. Al agotarse, el trabajo se marca como fallido y se mueve a la cola de fallos. El endpoint de salud consulta solo el proveedor principal; la disponibilidad del respaldo no oculta un fallo del principal.
 
-OpenAI uses `AI_PROVIDER_OPENAI_URL`, `AI_PROVIDER_OPENAI_HEALTH_URL` and `AI_PROVIDER_OPENAI_API_KEY`, plus `AI_PROVIDER_OPENAI_MODEL`; Anthropic uses the corresponding `AI_PROVIDER_ANTHROPIC_*` variables; Gemini uses `AI_PROVIDER_GEMINI_*`. Select a provider by setting `AI_PROVIDER` or `AI_FALLBACK_PROVIDER` to one of those names. Provider credentials stay on the API side, are never sent to Angular, and must be replaced with deployment secrets outside local development. Logs may contain secrets or personal data: redact sensitive fields before sending them to any external provider. Provider outputs are suggestions, not verified facts.
+OpenAI usa `AI_PROVIDER_OPENAI_URL`, `AI_PROVIDER_OPENAI_HEALTH_URL`, `AI_PROVIDER_OPENAI_API_KEY` y `AI_PROVIDER_OPENAI_MODEL`. Anthropic usa las variables equivalentes `AI_PROVIDER_ANTHROPIC_*`. Gemini usa `AI_PROVIDER_GEMINI_URL`, `AI_PROVIDER_GEMINI_HEALTH_URL` y `AI_PROVIDER_GEMINI_API_KEY`.
 
-## Structured logging
+## Logs estructurados
 
-`JsonLoggerService` implements Nest's `LoggerService` and writes one JSON line per entry to stdout: `{ timestamp, level, context?, message, ...meta }`. Errors serialize `error` and `stack`; structured objects merge into the line without overwriting the reserved keys (`timestamp`, `level`, `context`, `message`).
+`JsonLoggerService` implementa `LoggerService` de Nest y escribe una línea JSON por evento en stdout: `{ timestamp, level, context?, message, ...meta }`. Los errores serializan `error` y `stack`; los objetos estructurados se combinan sin sobrescribir las claves reservadas (`timestamp`, `level`, `context`, `message`).
 
-`RequestLoggingMiddleware` assigns every request an id — reusing an inbound `x-request-id` or generating a UUID — echoes it as a response header, and logs `{ requestId, method, path, status, durationMs }` once on `finish`. `main.ts` wires both with `bufferLogs`, so bootstrap logs also pass through the JSON logger.
+`RequestLoggingMiddleware` asigna un ID a cada solicitud —reutiliza `x-request-id` entrante o genera un UUID—, lo devuelve en la respuesta y registra `{ requestId, method, path, status, durationMs }` al terminar. `main.ts` configura ambos con `bufferLogs`, de modo que los logs de inicio también usan el logger JSON.
 
-## Health and API documentation
+## Salud y documentación de la API
 
-`GET /api/health` is the readiness report. It keeps checks for the API root response and memory heap/RSS limits and integrates project-native checks for MongoDB, the Nest cache manager backed by Redis, and the active AI provider. The root check probes the `/api` prefix root, not the bare base URL, because the API is mounted under a global prefix. Custom check failures use Terminus's `HealthIndicatorService` results rather than the deprecated `HealthCheckError`; `GlobalHttpExceptionFilter` preserves the per-check detail when readiness answers 503.
+`GET /api/health` es el informe de disponibilidad. Comprueba la respuesta raíz de la API, los límites de memoria heap/RSS y dependencias MongoDB, gestor de caché Nest respaldado por Redis y proveedor activo de IA. La comprobación raíz consulta el prefijo `/api`, no la URL base sin prefijo. Los chequeos personalizados usan los resultados de `HealthIndicatorService` de Terminus en vez del obsoleto `HealthCheckError`; `GlobalHttpExceptionFilter` conserva el detalle de cada chequeo cuando la disponibilidad responde `503`.
 
-`GET /api/health/live` is the liveness probe. It returns `{ status, uptime }` without touching MongoDB, Redis, HTTP or the AI provider, which is what the Compose healthcheck consumes. With placeholder AI credentials readiness reports 503 while the container still reports healthy.
+`GET /api/health/live` es el chequeo de actividad. Devuelve `{ status, uptime }` sin consultar MongoDB, Redis, HTTP ni al proveedor de IA; Compose usa esta ruta para la comprobación del contenedor. Con claves de IA de ejemplo, disponibilidad devuelve `503`, pero el contenedor sigue activo.
 
-## Frontend
+## Interfaz web
 
-The Angular app is a routed shell (`/logs`, `/analyses`, redirects from `''` and `**` to `/logs`) with a light theme expressed through CSS custom properties in `src/web/src/styles.scss` (`--surface`, `--text`, `--accent`, `--danger`, `--radius`, `--space-*`). Each feature owns its stylesheet instead of sharing one budget-limited global sheet.
+La aplicación Angular cuenta con rutas `/logs` y `/analyses`; `''` y `**` redirigen a `/logs`. El tema claro se implementa con propiedades CSS en `src/web/src/styles.scss` (`--surface`, `--text`, `--accent`, `--danger`, `--radius`, `--space-*`). Cada funcionalidad conserva sus estilos para evitar agotar el presupuesto de la hoja global.
 
-- **Logs page** — filter form (`service`, `level`, `from`, `to`), ingestion form, selectable table, analyze-selected action, pagination (10/20/50 per page, previous/next, range text). When an empty page arrives with `offset > 0`, it recomputes the last valid offset and refetches only if it differs.
-- **Analyses page** — status filter, paginated list, per-status badges, provider/summary/insights rendering, terminal error line, dead-letter section, and polling every 2.5 s while any job is `queued` or `processing`. Polling refreshes each pending job through `GET /api/analysis/{id}` and stops when none remain or when the component is destroyed.
+- **Logs**: filtros por `service`, `level`, `from` y `to`; formulario de ingesta; tabla seleccionable; prompt opcional para la acción de análisis; paginación de 10/20/50 elementos con anterior/siguiente y rango. Si la página recibida está vacía y `offset > 0`, calcula la última página válida y vuelve a consultarla si cambia.
+- **Análisis**: filtro por estado, lista paginada, indicadores por estado, resultado con proveedor/resumen/insights, error terminal, cola de fallos y actualización cada 2,5 segundos mientras haya trabajos `queued` o `processing`. Actualiza cada trabajo pendiente mediante `GET /api/analysis/{id}` y detiene la consulta cuando no quedan pendientes o se destruye el componente.
 
-`LogsApiService` is the single HTTP client; it omits blank filters and defaults the ingestion timestamp to now. API errors are rendered from the shared `{ message }` envelope rather than a generic transport string.
+`LogsApiService` centraliza las llamadas HTTP, omite filtros vacíos y asigna la fecha actual a la ingesta cuando no se especifica. Los errores muestran el campo compartido `{ message }` y no un mensaje de transporte genérico.
 
-## Tests
+## Pruebas
 
-`pnpm test` runs unit, HTTP integration and Angular/Karma suites; targeted commands are `pnpm test:unit`, `pnpm test:integration` and `pnpm test:web`.
+`pnpm test` ejecuta pruebas unitarias, HTTP de integración y Angular/Karma. Comandos específicos: `pnpm test:unit`, `pnpm test:integration` y `pnpm test:web`.
 
-- **Unit** — provider registry, all three adapters (valid payload, malformed payload, timeout), queue processor terminal failure, JSON logger and request middleware, port resolution and health behavior.
-- **Integration** — Nest HTTP pipeline with repository, cache, queue and provider collaborators stubbed: pagination bounds, filters, log stats, dead-letter listing, analysis routes and the consistent error envelope. No live MongoDB, Redis or provider is required.
-- **Web** — Karma/ChromeHeadless specs for the API client, pagination, logs page, analyses page (fakeAsync polling) and routed shell.
+- **Unitarias**: registro de proveedores, tres adaptadores (respuesta válida, formato incorrecto y timeout), fallo terminal del worker, logger JSON, middleware de solicitudes, resolución de puertos y salud.
+- **Integración**: pipeline HTTP Nest con repositorios, caché, cola y proveedores sustituidos; valida paginación, filtros, estadísticas, cola de fallos, rutas de análisis y formato de errores. No requiere MongoDB, Redis ni proveedores reales.
+- **Web**: pruebas Karma/ChromeHeadless del cliente API, paginación, página de logs, página de análisis (polling con `fakeAsync`) y shell con rutas.
 
-Karma runs headless Chrome with `--no-sandbox` when the process is root (`src/web/karma.conf.cjs`); set `CHROME_BIN` if Chrome is not on `PATH`.
+Si el proceso ejecuta Karma como root, Chrome usa `--no-sandbox` mediante `src/web/karma.conf.cjs`; configura `CHROME_BIN` si Chrome no está en `PATH`.
 
-## Docker and environment
+## Docker y entorno
 
-The multi-stage Dockerfile builds on Node Alpine; the runtime web image is Nginx Alpine. MongoDB uses its official Ubuntu-based image because the official Mongo image does not provide an Alpine variant. Redis uses `redis:7-alpine`. The production API image contains only filtered production workspace dependencies and the compiled Nest bundle.
+El Dockerfile multi-stage construye con Node Alpine y usa Nginx Alpine para servir el panel. MongoDB usa la imagen oficial basada en Ubuntu, porque no existe una variante Alpine oficial. Redis usa `redis:7-alpine`. La imagen final de API contiene solo las dependencias de producción del workspace y el bundle compilado de Nest.
 
-| Variable | Purpose |
+| Variable | Propósito |
 |---|---|
-| `PROXY_PORT` | Host-published HTTP ingress |
-| `MONGO_PORT`, `REDIS_PORT` | Loopback-only ports for local development |
-| `HTTP_AUTH_USERNAME`, `HTTP_AUTH_PASSWORD` | Nginx Basic Auth credentials |
-| `NODE_ENV`, `API_PORT` | API runtime and internal upstream port (`PORT` takes precedence when set) |
-| `MONGODB_IMAGE`, `REDIS_IMAGE` | Infrastructure image tags |
-| `MONGODB_INITDB_ROOT_USERNAME`, `MONGODB_INITDB_ROOT_PASSWORD`, `MONGODB_DATABASE` | MongoDB initialization |
-| `MONGODB_URI`, `REDIS_URL`, `APP_BASE_URL` | Host-local API connection endpoints |
-| `MONGODB_URI_DOCKER`, `REDIS_URL_DOCKER`, `APP_BASE_URL_DOCKER` | API connection endpoints inside Compose |
-| `REDIS_PASSWORD` | Redis authentication |
-| `CACHE_TTL_SECONDS` | Redis cache expiration |
-| `AI_PROVIDER`, `AI_FALLBACK_PROVIDER` | Active and fallback adapter names |
-| `AI_PROVIDER_<NAME>_URL` | Provider analysis endpoint |
-| `AI_PROVIDER_<NAME>_HEALTH_URL` | Provider health endpoint |
-| `AI_PROVIDER_<NAME>_API_KEY` | Provider credential |
-| `AI_PROVIDER_OPENAI_MODEL`, `AI_PROVIDER_ANTHROPIC_MODEL` | Model identifiers for OpenAI and Anthropic |
-| `AI_REQUEST_TIMEOUT_MS`, `AI_HEALTH_TIMEOUT_MS` | Provider request timeouts |
-| `AI_RETRY_ATTEMPTS`, `AI_RETRY_BACKOFF_MS` | BullMQ retry/backoff policy |
-| `HEALTH_CHECK_MEMORY_HEAP_LIMIT`, `HEALTH_CHECK_MEMORY_RSS_LIMIT` | Health limits in MiB |
+| `PROXY_PORT` | Puerto HTTP de entrada publicado en el host |
+| `MONGO_PORT`, `REDIS_PORT` | Puertos locales, limitados a loopback |
+| `HTTP_AUTH_USERNAME`, `HTTP_AUTH_PASSWORD` | Credenciales Nginx Basic Auth |
+| `NODE_ENV`, `API_PORT` | Entorno API y puerto interno (`PORT` tiene prioridad si está definido) |
+| `MONGODB_IMAGE`, `REDIS_IMAGE` | Versiones de imágenes de infraestructura |
+| `MONGODB_INITDB_ROOT_USERNAME`, `MONGODB_INITDB_ROOT_PASSWORD`, `MONGODB_DATABASE` | Inicialización de MongoDB |
+| `MONGODB_URI`, `REDIS_URL`, `APP_BASE_URL` | Direcciones para procesos ejecutados en el host |
+| `MONGODB_URI_DOCKER`, `REDIS_URL_DOCKER`, `APP_BASE_URL_DOCKER` | Direcciones dentro de Compose |
+| `REDIS_PASSWORD` | Autenticación Redis |
+| `CACHE_TTL_SECONDS` | Expiración de caché Redis |
+| `AI_PROVIDER`, `AI_FALLBACK_PROVIDER` | Adaptadores principal y de respaldo |
+| `AI_PROVIDER_<NAME>_URL` | Endpoint de análisis |
+| `AI_PROVIDER_<NAME>_HEALTH_URL` | Endpoint de salud del proveedor |
+| `AI_PROVIDER_<NAME>_API_KEY` | Credencial del proveedor |
+| `AI_PROVIDER_OPENAI_MODEL`, `AI_PROVIDER_ANTHROPIC_MODEL` | Modelos de OpenAI y Anthropic |
+| `AI_REQUEST_TIMEOUT_MS`, `AI_HEALTH_TIMEOUT_MS` | Timeouts de las peticiones |
+| `AI_RETRY_ATTEMPTS`, `AI_RETRY_BACKOFF_MS` | Política de reintentos/backoff de BullMQ |
+| `HEALTH_CHECK_MEMORY_HEAP_LIMIT`, `HEALTH_CHECK_MEMORY_RSS_LIMIT` | Límites de salud en MiB |
 
-Copy `.env.example` to `.env`, replace all placeholder URLs and credentials, and keep `.env` out of version control. `docker compose down` preserves named volumes; `docker compose down -v` deletes database and queue/cache data.
+Copia `.env.example` a `.env`, reemplaza URLs y credenciales de ejemplo y no incluyas `.env` en control de versiones. `docker compose down` conserva los volúmenes; `docker compose down -v` elimina también los datos de base y caché/cola.
 
-## Decision log
+## Registro de decisiones
 
-| # | Decision | Alternative discarded | Why |
+| # | Decisión | Alternativa descartada | Motivo |
 |---|---|---|---|
-| 1 | Analyses are served at `GET /api/analysis`, `GET /api/analysis/:id` and `GET /api/analysis/dead-letter`; enqueue stays at `POST /api/logs/analyze`. | Keep `/api/logs/analysis` and change the frontend, tests and docs. | Docs, the Angular client and the integration specs already assumed `/api/analysis`; nesting a top-level collection under `/logs` is the wrong hierarchy. |
-| 2 | Split the analyses module into `AnalysesController` (`@Controller('analysis')`) and `LogAnalysisController` (`@Controller('logs')`, enqueue only); `dead-letter` is declared before `:id`. | One controller with absolute paths. | Keeps enqueue in the module that owns the queue while avoiding a circular import between `LogsModule` and `AnalysesModule`. |
-| 3 | Normalize provider names with `trim().toLowerCase()` on both sides of the registry comparison; persist canonical display names. | Lowercase the enum values. | The registry value is persisted in `analyses.provider`; keeping `OpenAI` stable preserves existing records while `.env` stays lowercase. |
-| 4 | Dead letters are read-only through `GET /api/analysis/dead-letter?limit&offset`, returning job id, analysis id, failed reason, attempts and timestamp. | A worker that consumes the DLQ and persists rows to Mongo. | The queue already holds the truth; duplicating it adds a schema and a second source of divergence. A read endpoint proves the queue is used. |
-| 5 | Aggregation at `GET /api/logs/stats?groupBy=service|level&from&to` with a Mongo `$match`/`$group`/`$sort` pipeline. | Fetch logs and aggregate in Node. | The checklist asks for an aggregation query; DB-side avoids loading the collection and answers in one round trip. |
-| 6 | "Migration" means an idempotent index-creation script (`pnpm db:indexes`). | TypeORM migrations. | TypeORM's Mongo driver has no SQL-style migrations; indexes are the schema concern that actually matters for Mongo read paths. |
-| 7 | `pnpm seed` inserts a demo dataset (40 logs, four services, five levels, seven days, plus two analyses) and supports `--reset`/`--dry-run`. | JSON fixtures consumed only by tests. | A runnable dataset is required to exercise pagination, filters, aggregation and the dashboard manually. |
-| 8 | Jest configs set `rootDir` to `src/api`, `roots` to the repo `tests/` subfolders, and map `^src/(.*)$` to `<rootDir>/src/$1`. | Install `ts-jest` at the repository root. | Follows the app's own `node_modules`, avoids lockfile churn, and mirrors the TypeScript path mapping the code already uses. |
-| 9 | LLM tests mock the injected HTTP client and cover valid payload, malformed payload and timeout for each adapter. | Network interception (`nock`) or a fake provider server. | Providers receive `HttpService` through DI; a mock needs no new dependency and simulates a timeout deterministically. |
-| 10 | Structured logging is a dependency-free JSON logger plus request middleware (`x-request-id`, method, path, status, duration). | `nestjs-pino`/`pino`. | One small class covers the requirement; a logging framework adds transports and configuration this prototype does not need. |
-| 11 | The shell has two routes (`/logs`, `/analyses`) with redirects, plus a reusable pagination component (10/20/50, previous/next, range and total). | A single `AppComponent` doing everything. | The old component sat at the style budget and mixed ingestion, listing and polling; splitting keeps units testable and styles small. |
-| 12 | Angular specs are co-located under `src/web/src/app/**`, with `src/web/karma.conf.cjs` anchoring plugin resolution and a `ChromeHeadlessNoSandbox` launcher. | Point the karma target at `tests/web` with an `include` glob. | The Angular builder resolves `tsConfig`/`include` relative to the web project, so root-relative spec paths break the test target. |
-| 13 | A `Makefile` exposes install, dev, build, test, seed, indexes and Compose targets. | pnpm scripts only. | The checklist asks for a Makefile or automation scripts; a Makefile is discoverable and composes the workspace commands. |
-| 14 | Swagger schemas come from the `@nestjs/swagger` CLI plugin in `nest-cli.json`. | Hand-written `@ApiProperty` on every DTO field. | The plugin derives schemas from TypeScript types and validation decorators, keeping DTOs focused on validation. |
-| 15 | The API listens on `PORT`, falling back to `API_PORT`, then 3000. | Keep `PORT` only and document it. | Local `.env` defines `API_PORT`; before the fix, `pnpm start:api` silently ignored it. |
-| 16 | Frontend styling is built on CSS custom-property tokens in a light theme, split across shell and feature components. | Keep the old 12 kB dark stylesheet. | The old sheet was at the budget limit and could not absorb pagination and filter UI. |
+| 1 | Los análisis se consultan en `GET /api/analysis`, `GET /api/analysis/:id` y `GET /api/analysis/dead-letter`; el encolado permanece en `POST /api/logs/analyze`. | Mantener `/api/logs/analysis` y cambiar el panel, las pruebas y la documentación. | La documentación, el cliente Angular y las pruebas ya asumían `/api/analysis`; anidar una colección de primer nivel bajo `/logs` mezcla jerarquías. |
+| 2 | El módulo separa `AnalysesController` (`@Controller('analysis')`) y `LogAnalysisController` (`@Controller('logs')`, solo encolado); `dead-letter` se declara antes de `:id`. | Un único controlador con rutas absolutas. | Mantiene el encolado junto al módulo dueño de la cola y evita importaciones circulares entre `LogsModule` y `AnalysesModule`. |
+| 3 | Los nombres de proveedores se comparan con `trim().toLowerCase()` y se persisten canónicamente. | Pasar los valores del enum a minúsculas. | `analyses.provider` conserva valores estables (`OpenAI`, etc.) y `.env` puede seguir usando minúsculas. |
+| 4 | La cola de fallos se consulta en modo solo lectura mediante `GET /api/analysis/dead-letter?limit&offset`. | Consumir la cola y duplicar las entradas en MongoDB. | BullMQ ya es la fuente de verdad; duplicarla agrega esquema y riesgo de divergencia. |
+| 5 | La agregación usa un pipeline Mongo `$match`/`$group`/`$sort` en `GET /api/logs/stats?groupBy=service|level&from&to`. | Cargar todos los logs y agrupar en Node. | La base devuelve el resultado en una consulta sin transferir toda la colección. |
+| 6 | Las migraciones Mongo son unidades versionadas por colección, con `up` y `down`; las registra `_smartlog_migrations` y se revierten en orden inverso. | Usar migraciones SQL de TypeORM o un script no versionado como única herramienta. | El driver Mongo no ofrece migraciones SQL; los índices son el requisito actual y conviene mantener su historial y reversión. |
+| 7 | `pnpm seed` inserta 40 logs de cuatro servicios y cinco niveles, más dos análisis; `--reset` y `--dry-run` permiten controlar la ejecución. | Fixtures JSON solo para pruebas. | El conjunto debe permitir probar manualmente paginación, filtros, agregación y panel. |
+| 8 | La configuración Jest usa `rootDir` en `src/api`, las suites bajo `tests/` y el mapeo `^src/(.*)$` a `<rootDir>/src/$1`. | Instalar `ts-jest` en la raíz del monorepo. | Reutiliza dependencias de la aplicación, evita cambios de lockfile y sigue el mapeo de TypeScript existente. |
+| 9 | Las pruebas de modelos de IA simulan el cliente HTTP inyectado y validan payload correcto, incorrecto y timeout por adaptador. | Interceptar red con `nock` o levantar un servidor falso. | `HttpService` llega por DI; el mock no agrega dependencias y simula timeouts de forma determinista. |
+| 10 | Los logs estructurados usan un logger JSON sin dependencias y middleware de correlación (`x-request-id`, método, ruta, estado y duración). | Añadir `nestjs-pino`/`pino`. | Una clase cubre el prototipo sin incluir transports ni configuración adicional. |
+| 11 | El shell tiene dos rutas (`/logs`, `/analyses`) y un componente reutilizable de paginación (10/20/50, anterior/siguiente, rango y total). | Concentrar todo en `AppComponent`. | Separar ingesta, listados y seguimiento de análisis mejora la prueba por unidad y reduce estilos compartidos. |
+| 12 | Las pruebas Angular viven junto a `src/web/src/app/**`; `src/web/karma.conf.cjs` fija la resolución del plugin y el launcher `ChromeHeadlessNoSandbox`. | Configurar el target Karma en `tests/web` con rutas relativas a la raíz. | El builder resuelve `tsConfig`/`include` desde el proyecto web; las rutas desde la raíz rompen el target. |
+| 13 | `Makefile` expone comandos de instalación, desarrollo, compilación, pruebas, seed, índices, migraciones y Compose. | Usar solo scripts pnpm. | El Makefile hace visibles los flujos habituales y compone comandos del workspace. |
+| 14 | Swagger deriva los esquemas del plugin CLI `@nestjs/swagger` en `nest-cli.json`. | Añadir `@ApiProperty` manualmente a cada campo DTO. | El plugin usa tipos TS y validadores sin mezclar documentación con validación. |
+| 15 | La API escucha en `PORT`, después `API_PORT`, y por último 3000. | Usar solo `PORT` y documentarlo. | `.env` local define `API_PORT`; antes la ejecución `pnpm start:api` lo ignoraba. |
+| 16 | El frontend usa tokens CSS de tema claro, separados entre shell y componentes funcionales. | Mantener la hoja oscura previa de 12 kB. | La hoja existente estaba en el límite de tamaño y no podía incorporar paginación y filtros. |
 
-## Remaining work
+## Trabajo pendiente
 
-- Add protocol adapters for additional vendors and run real external-provider contract tests.
-- Add cache invalidation for log ingestion and define the desired freshness policy for cached log listings.
-- Add a DLQ requeue action once operational policy is defined.
-- Add retention, redaction, authentication/authorization hardening, rate limits and production secrets management.
-- Add tracing and metrics; today structured request logs and readiness checks are the observability surface.
+- Añadir adaptadores para otros proveedores y pruebas de contrato reales contra proveedores externos.
+- Invalidar la caché tras ingerir logs y definir la frescura requerida para los listados.
+- Añadir una acción de reencolado de DLQ cuando exista una política operativa.
+- Incorporar retención, redacción, autenticación/autorización, límites de tasa y gestión de secretos de producción.
+- Añadir trazas y métricas; actualmente la superficie de observabilidad son los logs estructurados y los chequeos de disponibilidad.
