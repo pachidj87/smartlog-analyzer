@@ -10,8 +10,11 @@ import { LogEntryInterface } from 'src/common/contracts';
 export class GeminiAnalysisProvider extends BaseAnalysisProvider {
   readonly name = ProviderName.GEMINI;
 
-  async analyze(logs: LogEntryInterface[]): Promise<AnalysisResultInterface> {
-    const text = this.createAnalysisPrompt(logs);
+  async analyze(
+    logs: LogEntryInterface[],
+    prompt?: string,
+  ): Promise<AnalysisResultInterface> {
+    const text = this.createAnalysisPrompt(logs, prompt);
     const url = this.requiredConfig('URL');
     const response = await this.http.axiosRef.post<unknown>(
       url,

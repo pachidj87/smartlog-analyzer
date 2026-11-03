@@ -53,6 +53,20 @@ describe('OpenAiAnalysisProvider', () => {
     );
   });
 
+  it('includes the user prompt in the provider request', async () => {
+    post.mockResolvedValue({
+      data: {
+        choices: [{ message: { content: JSON.stringify(result) } }],
+      },
+    });
+
+    await provider.analyze([], 'Find deployment-related errors');
+
+    expect(post.mock.calls[0][1].messages[1].content).toContain(
+      'Find deployment-related errors',
+    );
+  });
+
   it('checks OpenAI availability through its models endpoint', async () => {
     get.mockResolvedValue({ status: 200 });
 

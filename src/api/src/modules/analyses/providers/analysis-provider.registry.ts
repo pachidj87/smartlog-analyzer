@@ -21,7 +21,7 @@ export class AnalysisProviderRegistry {
     private readonly providers: AnalysisProviderInterface[],
   ) {}
 
-  async analyze(logs: LogEntryInterface[]) {
+  async analyze(logs: LogEntryInterface[], prompt?: string) {
     const activeName = this.config.get<string>('AI_PROVIDER');
     const fallbackName = this.config.get<string>('AI_FALLBACK_PROVIDER');
     const candidates = [activeName, fallbackName].filter(
@@ -39,7 +39,7 @@ export class AnalysisProviderRegistry {
       }
 
       try {
-        const result = await provider.analyze(logs);
+        const result = await provider.analyze(logs, prompt);
         return { result, provider: provider.name };
       } catch (error) {
         failures.push(name);

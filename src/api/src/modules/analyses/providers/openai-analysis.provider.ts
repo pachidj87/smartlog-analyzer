@@ -10,8 +10,11 @@ import { BaseAnalysisProvider } from './base-analysis.provider';
 export class OpenAiAnalysisProvider extends BaseAnalysisProvider {
   readonly name = ProviderName.OPENAI;
 
-  async analyze(logs: LogEntryInterface[]): Promise<AnalysisResultInterface> {
-    const content = this.createAnalysisPrompt(logs);
+  async analyze(
+    logs: LogEntryInterface[],
+    prompt?: string,
+  ): Promise<AnalysisResultInterface> {
+    const content = this.createAnalysisPrompt(logs, prompt);
     const response = await this.http.axiosRef.post<unknown>(
       this.requiredConfig('URL'),
       {

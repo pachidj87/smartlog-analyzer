@@ -35,10 +35,14 @@ describe('AnalysisProviderRegistry', () => {
     }).compile();
 
     const registry = moduleRef.get(AnalysisProviderRegistry);
-    await expect(registry.analyze([])).resolves.toEqual({
+    await expect(registry.analyze([], 'Explain the error pattern')).resolves.toEqual({
       result,
       provider: ProviderName.ANTHROPIC,
     });
+    expect(anthropic.analyze).toHaveBeenCalledWith(
+      [],
+      'Explain the error pattern',
+    );
 
     await moduleRef.close();
   });

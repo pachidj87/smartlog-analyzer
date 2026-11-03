@@ -13,6 +13,9 @@ export class AnalysisEntity {
   logIds!: string[];
 
   @Column()
+  prompt?: string;
+
+  @Column()
   status!: AnalysisStatus;
 
   @Column()

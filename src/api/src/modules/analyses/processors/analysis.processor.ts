@@ -53,7 +53,10 @@ export class AnalysisProcessor extends WorkerHost {
         );
       }
 
-      const { result, provider } = await this.providers.analyze(logs);
+      const { result, provider } = await this.providers.analyze(
+        logs,
+        analysis.prompt,
+      );
       analysis.status = AnalysisStatus.Completed;
       analysis.provider = provider;
       analysis.result = result;

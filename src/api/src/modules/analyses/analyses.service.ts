@@ -55,6 +55,7 @@ export class AnalysesService {
     const now = new Date();
     const analysis = this.analysesRepository.create({
       logIds: dto.logIds,
+      ...(dto.prompt?.trim() ? { prompt: dto.prompt.trim() } : {}),
       status: AnalysisStatus.Queued,
       attempts: 0,
       createdAt: now,
@@ -86,6 +87,7 @@ export class AnalysesService {
     const result = {
       id,
       status: saved.status,
+      ...(saved.prompt ? { prompt: saved.prompt } : {}),
       createdAt: saved.createdAt.toISOString(),
     };
 
@@ -152,6 +154,7 @@ export class AnalysesService {
       logIds: analysis.logIds,
       status: analysis.status,
       ...(analysis.provider ? { provider: analysis.provider } : {}),
+      ...(analysis.prompt ? { prompt: analysis.prompt } : {}),
       ...(analysis.result ? { result: analysis.result } : {}),
       ...(analysis.error ? { error: analysis.error } : {}),
       attempts: analysis.attempts,

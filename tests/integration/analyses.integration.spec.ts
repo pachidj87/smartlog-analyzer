@@ -62,6 +62,10 @@ describe('Analysis HTTP endpoints', () => {
     await app.init();
   });
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   afterAll(async () => {
     await app.close();
   });
@@ -74,6 +78,33 @@ describe('Analysis HTTP endpoints', () => {
       .expect(({ body }) => {
         expect(body).toEqual(analysis);
       });
+  });
+
+  it('accepts and forwards a user prompt when queueing an analysis', async () => {
+    await request(app.getHttpServer())
+      .post('/api/logs/analyze')
+      .send({
+        logIds: ['507f1f77bcf86cd799439012'],
+        prompt: 'Find deployment-related errors',
+      })
+      .expect(202);
+
+    expect(analysesService.enqueue).toHaveBeenCalledWith({
+      logIds: ['507f1f77bcf86cd799439012'],
+      prompt: 'Find deployment-related errors',
+    });
+  });
+
+  it('rejects prompts longer than 4000 characters', async () => {
+    await request(app.getHttpServer())
+      .post('/api/logs/analyze')
+      .send({
+        logIds: ['507f1f77bcf86cd799439012'],
+        prompt: 'x'.repeat(4001),
+      })
+      .expect(400);
+
+    expect(analysesService.enqueue).not.toHaveBeenCalled();
   });
 
   it('rejects malformed log IDs before queueing', async () => {
