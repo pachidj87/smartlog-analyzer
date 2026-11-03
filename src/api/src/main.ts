@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { resolvePort } from './config/resolve-port';
 import { GlobalHttpExceptionFilter } from './common/filters';
 
 async function bootstrap() {
@@ -27,6 +28,6 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, swaggerDocument, {
     useGlobalPrefix: true,
   });
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(resolvePort(process.env));
 }
 bootstrap();
