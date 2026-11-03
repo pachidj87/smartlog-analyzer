@@ -138,6 +138,47 @@
   gap: var(--space-3, 0.75rem);
 }
 
+.logs__analysis-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  margin: var(--space-3, 0.75rem) 0;
+  padding: var(--space-3, 0.75rem);
+  border: 1px solid var(--accent-border, #c6d8fb);
+  border-radius: var(--radius, 0.5rem);
+  background: var(--accent-soft, #eef4ff);
+}
+
+.logs__analysis-prompt .logs__field {
+  flex: 1 1 20rem;
+}
+
+.logs__analysis-prompt textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border, #d3d9e6);
+  border-radius: var(--radius-sm, 0.375rem);
+  background: var(--surface, #ffffff);
+  color: var(--text, #1d2433);
+  font: inherit;
+  resize: vertical;
+}
+
+.logs__analysis-prompt small {
+  font-size: 0.75rem;
+}
+
+.logs__analysis-prompt .logs__validation {
+  color: var(--danger, #b3261e);
+}
+
+.logs__analysis-prompt .logs__actions {
+  margin-top: 0;
+}
+
 .logs__table-scroll {
   overflow-x: auto;
 }

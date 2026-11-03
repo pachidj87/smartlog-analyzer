@@ -45,6 +45,7 @@ export class LogsPageComponent implements OnInit {
   readonly selectedIds = signal<ReadonlySet<string>>(new Set());
   readonly loading = signal(false);
   readonly submitting = signal(false);
+  readonly analysisPromptOpen = signal(false);
   readonly error = signal('');
   readonly notice = signal('');
 
@@ -56,6 +57,18 @@ export class LogsPageComponent implements OnInit {
   newService = '';
   newLevel: LogLevel = 'log';
   newMessage = '';
+  readonly analysisPrompt = signal('');
+
+  get analysisPromptValidationMessage(): string {
+    const prompt = this.analysisPrompt();
+    if (!prompt.trim()) {
+      return 'Escribe las instrucciones para el análisis.';
+    }
+    if (prompt.length > 4000) {
+      return 'El prompt no puede superar los 4.000 caracteres.';
+    }
+    return '';
+  }
 
   ngOnInit(): void {
     this.load();
@@ -128,20 +141,30 @@ export class LogsPageComponent implements OnInit {
   }
 
   toggleLog(id: string, checked: boolean): void {
-    this.selectedIds.update((ids) => {
-      const next = new Set(ids);
-      if (checked) {
-        next.add(id);
-      } else {
-        next.delete(id);
-      }
-      return next;
-    });
+    const next = new Set(this.selectedIds());
+    if (checked) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+    this.selectedIds.set(next);
+    this.analysisPromptOpen.set(next.size > 0);
+  }
+
+  openAnalysisPrompt(): void {
+    if (this.selectedIds().size > 0) {
+      this.analysisPromptOpen.set(true);
+    }
+  }
+
+  cancelAnalysis(): void {
+    this.analysisPromptOpen.set(false);
+    this.analysisPrompt.set('');
   }
 
   analyzeSelected(): void {
     const logIds = [...this.selectedIds()];
-    if (logIds.length === 0) {
+    if (logIds.length === 0 || this.analysisPromptValidationMessage) {
       return;
     }
 
@@ -149,11 +172,15 @@ export class LogsPageComponent implements OnInit {
     this.error.set('');
     this.notice.set('');
 
-    this.api.enqueueAnalysis(logIds).subscribe({
+    this.api.enqueueAnalysis(logIds, this.analysisPrompt().trim()).subscribe({
       next: (task) => {
         this.submitting.set(false);
+        this.analysisPromptOpen.set(false);
+        this.analysisPrompt.set('');
         this.selectedIds.set(new Set());
-        this.notice.set(`Analysis ${task.id} queued for ${logIds.length} log(s).`);
+        this.notice.set(
+          `Análisis ${task.id} encolado para ${logIds.length} registro(s).`,
+        );
       },
       error: (failure: unknown) => {
         this.submitting.set(false);
@@ -179,7 +206,7 @@ export class LogsPageComponent implements OnInit {
         next: () => {
           this.submitting.set(false);
           this.newMessage = '';
-          this.notice.set('Log ingested.');
+          this.notice.set('Registro guardado.');
           this.load();
         },
         error: (failure: unknown) => {

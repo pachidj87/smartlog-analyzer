@@ -1,12 +1,13 @@
 <section class="logs">
   <header class="logs__header">
     <div>
-      <h1 class="logs__title">Logs</h1>
+      <h1 class="logs__title">Registros</h1>
       <p class="logs__subtitle">
-        Search ingested logs, review details and queue AI analyses.
+        Al seleccionar registros, aparece el campo para escribir instrucciones
+        antes de iniciar el análisis.
       </p>
     </div>
-    <span class="logs__counter">{{ total() }} logs</span>
+    <span class="logs__counter">{{ total() }} registros</span>
   </header>
 
   @if (error()) {
@@ -17,10 +18,10 @@
   }
 
   <form class="logs__card logs__filters" (ngSubmit)="applyFilters()">
-    <h2 class="logs__card-title">Filters</h2>
+    <h2 class="logs__card-title">Filtros</h2>
     <div class="logs__grid">
       <label class="logs__field">
-        <span>Service</span>
+        <span>Servicio</span>
         <input
           type="text"
           name="filterService"
@@ -30,9 +31,9 @@
       </label>
 
       <label class="logs__field">
-        <span>Level</span>
+        <span>Nivel</span>
         <select name="filterLevel" [(ngModel)]="filterLevel">
-          <option value="">Any level</option>
+          <option value="">Todos los niveles</option>
           @for (level of logLevels; track level) {
             <option [value]="level">{{ level }}</option>
           }
@@ -40,35 +41,35 @@
       </label>
 
       <label class="logs__field">
-        <span>From</span>
+        <span>Desde</span>
         <input type="date" name="filterFrom" [(ngModel)]="filterFrom" />
       </label>
 
       <label class="logs__field">
-        <span>To</span>
+        <span>Hasta</span>
         <input type="date" name="filterTo" [(ngModel)]="filterTo" />
       </label>
     </div>
 
     <div class="logs__actions">
       <button type="submit" class="logs__button logs__button--primary">
-        Apply filters
+        Aplicar filtros
       </button>
       <button
         type="button"
         class="logs__button"
         (click)="resetFilters()"
       >
-        Reset
+        Restablecer
       </button>
     </div>
   </form>
 
   <form class="logs__card logs__ingest" (ngSubmit)="ingest()">
-    <h2 class="logs__card-title">Ingest a log</h2>
+    <h2 class="logs__card-title">Registrar un log</h2>
     <div class="logs__grid">
       <label class="logs__field">
-        <span>Service</span>
+        <span>Servicio</span>
         <input
           type="text"
           name="newService"
@@ -79,7 +80,7 @@
       </label>
 
       <label class="logs__field">
-        <span>Level</span>
+        <span>Nivel</span>
         <select name="newLevel" [(ngModel)]="newLevel">
           @for (level of logLevels; track level) {
             <option [value]="level">{{ level }}</option>
@@ -88,12 +89,12 @@
       </label>
 
       <label class="logs__field logs__field--wide">
-        <span>Message</span>
+        <span>Mensaje</span>
         <input
           type="text"
           name="newMessage"
           required
-          placeholder="Downstream request failed"
+          placeholder="Falló una solicitud a un servicio dependiente"
           [(ngModel)]="newMessage"
         />
       </label>
@@ -105,29 +106,78 @@
         class="logs__button logs__button--primary"
         [disabled]="submitting()"
       >
-        Store log
+        Guardar log
       </button>
     </div>
   </form>
 
   <div class="logs__card logs__table-card">
     <div class="logs__table-head">
-      <h2 class="logs__card-title">Recent logs</h2>
+      <h2 class="logs__card-title">Registros recientes</h2>
       <button
         type="button"
         class="logs__button logs__button--primary"
         [disabled]="submitting() || selectedIds().size === 0"
-        (click)="analyzeSelected()"
+        (click)="openAnalysisPrompt()"
       >
-        Analyze selected ({{ selectedIds().size }})
+        Analizar seleccionados ({{ selectedIds().size }})
       </button>
     </div>
 
+    @if (analysisPromptOpen()) {
+      <form class="logs__analysis-prompt" (ngSubmit)="analyzeSelected()">
+        <div>
+          <label class="logs__field">
+            <span>Instrucciones para el análisis con IA</span>
+            <textarea
+              id="analysisPrompt"
+              name="analysisPrompt"
+              rows="3"
+              required
+              maxlength="4000"
+              placeholder="¿Qué patrones debería buscar la IA?"
+              [ngModel]="analysisPrompt()"
+              (ngModelChange)="analysisPrompt.set($event)"
+              #promptControl="ngModel"
+              aria-describedby="analysisPromptHelp"
+            ></textarea>
+            <small id="analysisPromptHelp">
+              Escribe un prompt obligatorio de hasta 4.000 caracteres. Se usará
+              únicamente para este análisis.
+            </small>
+            @if (promptControl.dirty && analysisPromptValidationMessage) {
+              <small class="logs__validation" role="alert">
+                {{ analysisPromptValidationMessage }}
+              </small>
+            }
+          </label>
+        </div>
+
+        <div class="logs__actions">
+          <button
+            type="submit"
+            class="logs__button logs__button--primary"
+            [disabled]="submitting() || !!analysisPromptValidationMessage"
+          >
+            Iniciar análisis
+          </button>
+          <button
+            type="button"
+            class="logs__button"
+            [disabled]="submitting()"
+            (click)="cancelAnalysis()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    }
+
     @if (loading()) {
-      <p class="logs__state">Loading logs…</p>
+      <p class="logs__state">Cargando registros…</p>
     } @else if (logs().length === 0) {
       <p class="logs__state">
-        No logs yet. Ingest one above or adjust the filters.
+        Todavía no hay registros. Carga uno arriba o ajusta los filtros.
       </p>
     } @else {
       <div class="logs__table-scroll">
@@ -135,10 +185,10 @@
           <thead>
             <tr>
               <th scope="col" class="logs__check-column"></th>
-              <th scope="col">Timestamp</th>
-              <th scope="col">Service</th>
-              <th scope="col">Level</th>
-              <th scope="col">Message</th>
+              <th scope="col">Fecha y hora</th>
+              <th scope="col">Servicio</th>
+              <th scope="col">Nivel</th>
+              <th scope="col">Mensaje</th>
             </tr>
           </thead>
           <tbody>
@@ -148,12 +198,12 @@
                   <input
                     type="checkbox"
                     [checked]="selectedIds().has(log.id)"
-                    [attr.aria-label]="'Select log ' + log.id"
+                    [attr.aria-label]="'Seleccionar registro ' + log.id"
                     (change)="toggleLog(log.id, $any($event.target).checked)"
                   />
                 </td>
                 <td class="logs__timestamp">
-                  {{ log.timestamp | date: 'yyyy-MM-dd HH:mm:ss' }}
+                  {{ log.timestamp | date: 'dd/MM/yyyy HH:mm:ss' }}
                 </td>
                 <td class="logs__service">{{ log.service }}</td>
                 <td>

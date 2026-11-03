@@ -24,6 +24,7 @@ export interface LogEntry {
 export interface AnalysisTask {
   id: string;
   logIds: string[];
+  prompt?: string;
   status: AnalysisStatus;
   provider?: string;
   result?: {
@@ -121,9 +122,10 @@ export class LogsApiService {
     });
   }
 
-  enqueueAnalysis(logIds: string[]) {
+  enqueueAnalysis(logIds: string[], prompt = '') {
     return this.http.post<AnalysisTask>(`${this.apiUrl}/logs/analyze`, {
       logIds,
+      ...(prompt?.trim() ? { prompt: prompt.trim() } : {}),
     });
   }
 

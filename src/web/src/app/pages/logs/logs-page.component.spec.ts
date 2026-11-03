@@ -64,7 +64,7 @@ describe('LogsPageComponent', () => {
   it('shows the empty state when there are no logs', () => {
     fixture.detectChanges();
 
-    expect(text()).toContain('No logs yet');
+    expect(text()).toContain('Todavía no hay registros');
     expect(fixture.nativeElement.querySelector('tbody')).toBeNull();
   });
 
@@ -121,7 +121,7 @@ describe('LogsPageComponent', () => {
     expect(text()).toContain('payment-api');
   });
 
-  it('queues an analysis for the selected rows', () => {
+  it('shows the prompt above the table and queues analysis with it', () => {
     api.listLogs.and.returnValue(of(page([log])));
     api.enqueueAnalysis.and.returnValue(
       of({
@@ -141,11 +141,70 @@ describe('LogsPageComponent', () => {
     checkbox.click();
     fixture.detectChanges();
 
-    component.analyzeSelected();
+    expect(
+      fixture.nativeElement.querySelector('.logs__analysis-prompt'),
+    ).not.toBeNull();
+
+    const buttons = fixture.nativeElement.querySelectorAll(
+      'button',
+    ) as NodeListOf<HTMLButtonElement>;
+    const analyzeButton = Array.from(buttons).find((button) =>
+      button.textContent?.includes('Analizar seleccionados'),
+    );
+    expect(analyzeButton).toBeDefined();
+    if (!analyzeButton) {
+      return;
+    }
+    analyzeButton.click();
     fixture.detectChanges();
 
-    expect(api.enqueueAnalysis).toHaveBeenCalledWith([log.id]);
-    expect(text()).toContain('Analysis analysis-1 queued');
+    const promptForm = fixture.nativeElement.querySelector(
+      '.logs__analysis-prompt',
+    ) as HTMLFormElement;
+    const table = fixture.nativeElement.querySelector('table');
+    expect(promptForm).not.toBeNull();
+    expect(promptForm.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+
+    const promptInput = promptForm.querySelector(
+      'textarea[name="analysisPrompt"]',
+    ) as HTMLTextAreaElement;
+    expect(promptInput.maxLength).toBe(4000);
+    expect(promptInput.required).toBeTrue();
+    const submitButton = promptForm.querySelector(
+      'button[type="submit"]',
+    ) as HTMLButtonElement;
+    const setPrompt = (value: string) => {
+      component.analysisPrompt.set(value);
+      fixture.detectChanges();
+    };
+    expect(submitButton.disabled).toBeTrue();
+
+    setPrompt('   ');
+    expect(submitButton.disabled).toBeTrue();
+    component.analyzeSelected();
+    expect(api.enqueueAnalysis).not.toHaveBeenCalled();
+
+    setPrompt('a'.repeat(4001));
+    expect(submitButton.disabled).toBeTrue();
+    expect(component.analysisPromptValidationMessage).toContain('4.000');
+    component.analyzeSelected();
+    expect(api.enqueueAnalysis).not.toHaveBeenCalled();
+
+    setPrompt('Find recurring timeout errors');
+    expect(submitButton.disabled).toBeFalse();
+    expect(component.analysisPrompt()).toBe('Find recurring timeout errors');
+    promptForm.dispatchEvent(new Event('submit'));
+    fixture.detectChanges();
+
+    expect(api.enqueueAnalysis).toHaveBeenCalledWith(
+      [log.id],
+      'Find recurring timeout errors',
+    );
+    expect(text()).toContain('Análisis analysis-1 encolado');
+    expect(
+      fixture.nativeElement.querySelector('.logs__analysis-prompt'),
+    ).toBeNull();
   });
 
   it('ingests a log with the form values', () => {
