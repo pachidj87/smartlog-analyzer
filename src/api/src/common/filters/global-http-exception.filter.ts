@@ -9,6 +9,7 @@ import {
 
 import { Request, Response } from 'express';
 
+import { isClientSafeResponse } from '../errors';
 import { isRecord } from '../validators';
 
 
@@ -29,6 +30,8 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     const responseObject = isRecord(exceptionResponse)
       ? exceptionResponse
       : undefined;
+    const clientSafe =
+      responseObject !== undefined && isClientSafeResponse(exceptionResponse);
     const rawMessage = responseObject?.['message'] ?? exceptionResponse;
     const message = Array.isArray(rawMessage)
       ? rawMessage.join('; ')
@@ -47,14 +50,23 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       );
     }
 
-    response.status(status).json({
-      statusCode: status,
-      error,
-      message: status >= HttpStatus.INTERNAL_SERVER_ERROR
-        ? 'Internal server error'
-        : message,
-      path: request.originalUrl,
-      timestamp: new Date().toISOString(),
-    });
+    const body = clientSafe
+      ? {
+          statusCode: status,
+          ...responseObject,
+          path: request.originalUrl,
+          timestamp: new Date().toISOString(),
+        }
+      : {
+          statusCode: status,
+          error,
+          message: status >= HttpStatus.INTERNAL_SERVER_ERROR
+            ? 'Internal server error'
+            : message,
+          path: request.originalUrl,
+          timestamp: new Date().toISOString(),
+        };
+
+    response.status(status).json(body);
   }
 }
