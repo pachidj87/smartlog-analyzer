@@ -2,43 +2,46 @@ COMPOSE := docker compose
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev build test test-unit test-integration test-web seed indexes up down logs
+.PHONY: help install dev build test test-unit test-integration test-web seed indexes migrate up down logs
 
-help: ## Show this help
+help: ## Mostrar esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
-install: ## Install workspace dependencies
+install: ## Instalar dependencias del workspace
 	pnpm install
 
-dev: ## Run the API and the web app in development mode
+dev: ## Ejecutar la API y la web en desarrollo
 	pnpm start:api & pnpm start:web
 
-build: ## Build the API and the web app
+build: ## Compilar la API y la web
 	pnpm build
 
-test: ## Run unit, integration and web tests
+test: ## Ejecutar pruebas unitarias, de integración y web
 	pnpm test
 
-test-unit: ## Run the API unit tests
+test-unit: ## Ejecutar pruebas unitarias de la API
 	pnpm test:unit
 
-test-integration: ## Run the API integration tests
+test-integration: ## Ejecutar pruebas HTTP de integración
 	pnpm test:integration
 
-test-web: ## Run the Angular tests
+test-web: ## Ejecutar pruebas Angular
 	pnpm test:web
 
-seed: ## Insert the demo dataset (ARGS="--reset" to clear first)
+seed: ## Insertar datos demo (ARGS="--reset" para limpiar primero)
 	pnpm --filter smartlog-api run seed -- $(ARGS)
 
-indexes: ## Create the MongoDB indexes (ARGS="--dry-run" to preview)
+indexes: ## Crear índices MongoDB (ARGS="--dry-run" para previsualizar)
 	pnpm --filter smartlog-api run db:indexes -- $(ARGS)
 
-up: ## Start the Docker Compose stack
+migrate: ## Aplicar migraciones MongoDB (ARGS="--dry-run" para previsualizar)
+	pnpm --filter smartlog-api run db:migrate -- $(ARGS)
+
+up: ## Iniciar el stack de Docker Compose
 	$(COMPOSE) up -d --build
 
-down: ## Stop the Docker Compose stack
+down: ## Detener el stack de Docker Compose
 	$(COMPOSE) down
 
-logs: ## Follow the Docker Compose logs
+logs: ## Seguir los logs de Docker Compose
 	$(COMPOSE) logs -f

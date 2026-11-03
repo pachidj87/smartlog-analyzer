@@ -16,7 +16,6 @@ export const AppDataSource: DataSourceOptions = {
     join(rootDir, 'modules', '**', 'entities', '*.entity{.ts,.js}'),
     join(rootDir, 'db', 'entities', '*.entity{.ts,.js}'),
   ],
-  migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
   synchronize: false,
 };
 
