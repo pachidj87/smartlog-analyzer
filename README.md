@@ -1,126 +1,178 @@
 # SmartLog Analyzer
 
-Monorepo de una herramienta interna para recibir logs de microservicios, persistirlos en MongoDB y generar análisis asíncronos mediante proveedores de IA configurables. La API NestJS y el dashboard Angular comparten pnpm workspaces; los servicios externos locales son MongoDB y Redis.
+Internal observability tool: microservices push structured logs, SmartLog stores them in MongoDB and runs asynchronous AI analyses (summary, categorization and suggestions) through a configurable provider. The repository is a pnpm workspace with a NestJS API and an Angular 19 dashboard behind a single Nginx reverse proxy.
 
-La arquitectura y las decisiones técnicas vigentes están en [ARCHITECTURE.md](./ARCHITECTURE.md).
+Architecture, decisions and discarded alternatives live in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-## Requisitos
+## Requirements
 
-- Node.js 22+ con Corepack y pnpm 9.15.9.
-- Docker Engine y Docker Compose v2.
-- Chrome/Chromium para ejecutar tests Angular con Karma.
+- Node.js 22+ and pnpm 9.15.9 (`corepack enable`).
+- Docker Engine with Docker Compose v2 (for the full stack).
+- Chrome or Chromium for the Angular/Karma suite.
 
-## Estructura
-
-```text
-smartlog-analyzer/
-├── src/
-│   ├── api/           # API NestJS
-│   │   └── src/db/    # DataSource, migraciones y seeds
-│   └── web/           # Dashboard Angular 19
-├── tests/             # Unitarios, integración HTTP y Angular/Karma
-├── Dockerfile
-├── nginx-proxy.conf.template
-├── nginx-proxy-entrypoint.sh
-├── docker-compose.yml
-├── ARCHITECTURE.md
-└── .env.example
-```
-
-## Desarrollo local
+## Quick start (local)
 
 ```bash
 corepack enable
 pnpm install
 cp .env.example .env
-set -a
-. ./.env
-set +a
-docker compose up -d mongodb redis
-NODE_ENV=development pnpm start:api
-NODE_ENV=development pnpm start:web
+set -a && . ./.env && set +a
+
+docker compose up -d mongodb redis   # only the infrastructure
+pnpm start:api                       # http://localhost:3000/api
+pnpm start:web                       # http://localhost:4200
 ```
 
-La API local usa `MONGODB_URI` y `REDIS_URL` del `.env`, que apuntan a los puertos de loopback publicados por MongoDB y Redis. `src/web/proxy.conf.json` reenvía `/api` desde `http://localhost:4200` a la API local en el puerto definido por `API_PORT`. El stack Compose utiliza las variantes `*_DOCKER` para resolver los servicios por DNS privado.
+`src/web/proxy.conf.json` forwards `/api` from the dev server to `API_PORT`, so the dashboard works without CORS. The API reads `MONGODB_URI` and `REDIS_URL` from the environment, which already point at the loopback ports published by Compose.
 
-Swagger: `http://localhost:3000/api/docs`.
+- Swagger UI: `http://localhost:3000/api/docs` (JSON at `/api/docs-json`).
+- Readiness: `GET /api/health`; liveness: `GET /api/health/live`.
 
-## Tests y build
-
-Todos los tests se gestionan desde `tests/` raíz:
+Seed demo data and create the MongoDB indexes once MongoDB is reachable:
 
 ```bash
-pnpm test                 # Unit + integración HTTP + Angular/Karma
-pnpm test:unit
-pnpm test:integration
-pnpm test:web
-pnpm build                # API y Angular
+pnpm --filter smartlog-api run seed -- --dry-run   # preview only
+pnpm --filter smartlog-api run seed                # insert demo logs + analyses
+pnpm --filter smartlog-api run seed -- --reset     # clear logs/analyses first
+pnpm --filter smartlog-api run db:indexes          # create indexes idempotently
+pnpm --filter smartlog-api run db:indexes -- --dry-run
 ```
 
-Los tests HTTP usan Nest TestingModule y Supertest con collaborators aislados para probar rutas, DTOs, códigos HTTP y respuestas. Angular/Karma requiere Chrome o Chromium instalado.
-
-Limitación conocida: `pnpm test:unit` falla antes de ejecutar specs porque `tests/jest.unit.config.cjs` fija `rootDir` en la raíz del repo y `ts-jest` solo está instalado en `src/api` (`Module ts-jest in the transform option was not found`). Además, algunos specs importan rutas previas al refactor. El build y la ejecución de la API no se ven afectados.
-
-## API mínima
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| `POST` | `/api/logs` | Ingestar log |
-| `GET` | `/api/logs` | Listar logs, filtros y paginado |
-| `POST` | `/api/logs/analyze` | Encolar análisis; responde `202` |
-| `GET` | `/api/analysis` | Listar análisis, filtro de estado y paginado |
-| `GET` | `/api/analysis/{id}` | Consultar estado/resultado |
-| `GET` | `/api/health` | Readiness: API, Mongo, cache Redis, IA y memoria |
-| `GET` | `/api/health/live` | Liveness: proceso activo, sin dependencias |
-
-Ambos listados aceptan `limit` (20 por defecto, máximo 100) y `offset` (0 por defecto). El dashboard sondea las tareas activas cada 2,5 segundos y muestra queued/running, resultados completed y fallos terminales.
-
-## Ejecutar stack completo con Docker
+## Docker Compose
 
 ```bash
 cp .env.example .env
-# Cambia HTTP_AUTH_PASSWORD y configura las credenciales de los proveedores.
+# Replace HTTP_AUTH_PASSWORD and the AI provider keys before starting.
 docker compose up --build
 ```
 
-El único punto HTTP publicado es Nginx:
+Everything is served through Nginx on `http://localhost:8080` (Basic Auth using `HTTP_AUTH_USERNAME` / `HTTP_AUTH_PASSWORD`):
 
-- Dashboard: `http://localhost:8080`
-- API: `http://localhost:8080/api`
-- Swagger: `http://localhost:8080/api/docs`
-- Nginx solicita autenticación HTTP Basic con `HTTP_AUTH_USERNAME` y `HTTP_AUTH_PASSWORD`.
-- MongoDB: `127.0.0.1:27017` (`MONGO_PORT`, solo para herramientas locales).
-- Redis: `127.0.0.1:6379` (`REDIS_PORT`, solo loopback; también privado para los demás hosts).
+- Dashboard: `/`
+- API: `/api`
+- Swagger: `/api/docs`
 
-API y dashboard no publican puertos al host; el proxy enruta `/api` a NestJS y el resto de rutas a Angular. MongoDB y Redis solo se enlazan a loopback para desarrollo local. Compose espera a que MongoDB y Redis estén healthy para iniciar la API. El healthcheck del contenedor API consulta `/api/health/live`, que solo verifica que el proceso responda, para que una caída de un proveedor de IA no marque el contenedor como unhealthy. La readiness real queda en `/api/health` (Mongo, cache, provider AI activo y memoria) y devuelve `503` mientras las claves de IA sean placeholders. Cuando ambos proveedores fallan, la tarea se reintenta con backoff exponencial y termina en la dead-letter queue.
+Only the proxy publishes a port on the host. MongoDB and Redis bind to `127.0.0.1` for local tooling; the API and dashboard stay on the private Compose network. MongoDB and Redis must be healthy before the API starts, and the API container healthcheck uses `/api/health/live` so an AI provider outage does not mark the container unhealthy.
 
-La autenticación Basic no cifra las credenciales por sí sola. Úsala detrás de TLS en cualquier despliegue no local; no publiques este proxy directamente por HTTP en redes no confiables.
+Basic Auth does not encrypt credentials. Terminate TLS in front of the proxy for any non-local deployment.
 
-Para detener: `docker compose down`. Los datos permanecen en `mongodb_data` y `redis_data`. `docker compose down -v` elimina ambos volúmenes.
+Stop with `docker compose down`; data stays in the `mongodb_data` and `redis_data` volumes. `docker compose down -v` removes them.
 
-## Puertos, red y variables
+## Make targets
 
-Compose crea una red privada y los servicios se alcanzan por sus nombres `proxy`, `api`, `web`, `mongodb` y `redis`. Nginx es el único servicio HTTP accesible en la interfaz de red del host; MongoDB y Redis solo se enlazan a loopback para desarrollo local. API y web permanecen internos.
-
-| Variable | Uso |
+| Target | What it does |
 |---|---|
-| `PROXY_PORT` | Puerto HTTP publicado por Nginx (8080 por defecto). |
-| `HTTP_AUTH_USERNAME`, `HTTP_AUTH_PASSWORD` | Credenciales Basic Auth exigidas para dashboard y API. |
-| `NODE_ENV`, `API_PORT` | Entorno y puerto interno de API; Nginx utiliza el mismo puerto del upstream. |
-| `MONGO_PORT`, `REDIS_PORT` | Puertos de loopback de MongoDB/Redis para desarrollo local. |
-| `MONGODB_IMAGE`, `REDIS_IMAGE` | Versiones de las imágenes de infraestructura. |
-| `MONGODB_INITDB_ROOT_USERNAME`, `MONGODB_INITDB_ROOT_PASSWORD`, `MONGODB_DATABASE` | Inicialización de MongoDB. |
-| `MONGODB_URI`, `REDIS_URL`, `APP_BASE_URL` | URLs para ejecutar la API directamente en el host. |
-| `MONGODB_URI_DOCKER`, `REDIS_URL_DOCKER`, `APP_BASE_URL_DOCKER` | URLs de API dentro de la red de Compose. |
-| `REDIS_PASSWORD` | Contraseña del servidor Redis. |
-| `CACHE_TTL_SECONDS` | TTL de la cache de listado de logs. |
-| `AI_PROVIDER`, `AI_FALLBACK_PROVIDER` | Selección de adaptadores IA activo/fallback. |
-| `AI_PROVIDER_<NAME>_URL` | Endpoint de análisis para un provider. |
-| `AI_PROVIDER_<NAME>_HEALTH_URL` | Endpoint de health del provider. |
-| `AI_PROVIDER_<NAME>_API_KEY` | Credencial del provider; nunca se envía al navegador. |
-| `AI_PROVIDER_OPENAI_MODEL`, `AI_PROVIDER_ANTHROPIC_MODEL` | Modelos usados por los adaptadores OpenAI y Anthropic. |
-| `AI_REQUEST_TIMEOUT_MS`, `AI_HEALTH_TIMEOUT_MS` | Timeouts HTTP del adaptador. |
-| `AI_RETRY_ATTEMPTS`, `AI_RETRY_BACKOFF_MS` | Intentos BullMQ y demora exponencial inicial. |
-| `HEALTH_CHECK_MEMORY_HEAP_LIMIT`, `HEALTH_CHECK_MEMORY_RSS_LIMIT` | Límites de memoria del healthcheck, en MiB. |
+| `make install` | `pnpm install` |
+| `make dev` | Run the API and the dev server together |
+| `make build` | Build the API and the dashboard |
+| `make test` | Unit + integration + web suites |
+| `make test-unit` | API unit tests |
+| `make test-integration` | API HTTP integration tests |
+| `make test-web` | Angular/Karma tests |
+| `make seed ARGS="--reset"` | Run the seed script with optional flags |
+| `make indexes ARGS="--dry-run"` | Create MongoDB indexes (or preview) |
+| `make up` / `make down` | Start/stop the Compose stack |
+| `make logs` | Follow Compose logs |
 
-OpenAI (Chat Completions), Anthropic (Messages) y Gemini (`generateContent`) tienen adaptadores nativos. Se pueden seleccionar con `AI_PROVIDER` y `AI_FALLBACK_PROVIDER`; cada proveedor tiene URL, endpoint de health y API key configurables mediante `AI_PROVIDER_<NAME>_*`; OpenAI y Anthropic también aceptan configuración del modelo. Los ejemplos usan endpoints oficiales y modelos de ejemplo; sustituye las claves por credenciales válidas y no guardes secretos en Git. Más detalles de contrato, retry/DLQ y health en [ARCHITECTURE.md](./ARCHITECTURE.md).
+## Tests
+
+```bash
+pnpm test               # everything
+pnpm test:unit          # Jest, API units (48 specs)
+pnpm test:integration   # Jest + Supertest against a Nest testing module
+pnpm test:web           # Angular/Karma (ChromeHeadless)
+pnpm build              # API + dashboard production build
+```
+
+Integration tests stub MongoDB, Redis, BullMQ and the AI HTTP layer, so no external service is required. They cover pagination bounds, filters, the aggregation endpoint, dead-letter listing, provider contract validation, timeouts and the consistent error payload.
+
+Karma runs headless Chrome with `--no-sandbox` when the process is root (`src/web/karma.conf.cjs`). If Chrome is not on `PATH`, set `CHROME_BIN` to the binary.
+
+## API
+
+All routes are mounted under `/api`. Errors always return the same envelope:
+
+```json
+{ "statusCode": 400, "error": "Bad Request", "message": "...", "path": "/api/logs", "timestamp": "..." }
+```
+
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/api/logs` | Ingest one log (`service`, `timestamp`, `level`, `message`, optional `metadata`) |
+| `GET` | `/api/logs` | List logs with `limit`, `offset`, `service`, `level`, `from`, `to` |
+| `GET` | `/api/logs/stats` | Aggregate by `groupBy=service\|level` with optional `from`/`to` |
+| `POST` | `/api/logs/analyze` | Enqueue an analysis for `logIds`; responds `202` |
+| `GET` | `/api/analysis` | List analyses with `limit`, `offset`, optional `status` |
+| `GET` | `/api/analysis/dead-letter` | Read-only dead-letter jobs with `limit`, `offset` |
+| `GET` | `/api/analysis/{id}` | Analysis status and result |
+| `GET` | `/api/health` | Readiness: API, Mongo, Redis cache, AI provider, memory |
+| `GET` | `/api/health/live` | Liveness: the process answers |
+
+`limit` defaults to 20 and must be between 1 and 100; `offset` defaults to 0 and must be non-negative. Invalid values return `400` instead of being silently clamped. List responses are `{ items, total, limit, offset }`.
+
+### Aggregation
+
+`GET /api/logs/stats?groupBy=level&from=...&to=...` returns:
+
+```json
+{
+  "groupBy": "level",
+  "from": "2026-11-01T00:00:00.000Z",
+  "to": null,
+  "total": 12,
+  "buckets": [{ "key": "error", "count": 7 }]
+}
+```
+
+Buckets are sorted by count descending, then key ascending, and capped at 100 entries. The range is inclusive on the log `timestamp`; a reversed range is rejected with `400`.
+
+### Dead-letter queue
+
+After `AI_RETRY_ATTEMPTS` failures a job is moved from `analysis-queue` to `analysis-dead-letter-queue` and its analysis is marked `failed`. Dead letters are read-only: `GET /api/analysis/dead-letter` exposes `analysisId`, `failedReason`, `attempts` and `createdAt` for triage. Requeueing is intentionally manual (delete the job or re-post `/api/logs/analyze`).
+
+### AI providers
+
+OpenAI (Chat Completions), Anthropic (Messages) and Gemini (`generateContent`) have native adapters. `AI_PROVIDER` selects the primary and `AI_FALLBACK_PROVIDER` the fallback; each provider is configured with `AI_PROVIDER_<NAME>_URL`, `AI_PROVIDER_<NAME>_HEALTH_URL` and `AI_PROVIDER_<NAME>_API_KEY`. Provider names are matched case-insensitively but persisted with their canonical spelling (`OpenAI`, `Anthropic`, `Gemini`). Invalid names are ignored with a warning instead of registering a broken adapter.
+
+The model must answer with the documented JSON contract (`summary` plus `insights[]`). Non-JSON or off-contract responses become a `503` on the analysis task and are retried; the final failure lands in the dead-letter queue. Provider keys never reach the browser.
+
+## Data model
+
+| Collection | Purpose | Notes |
+|---|---|---|
+| `logs` | Ingested log entries | `service` (lowercase slug), `timestamp`, `level`, `message`, optional `metadata`, `ingestedAt` |
+| `analyses` | Analysis jobs | `logIds`, `status` (`queued`/`processing`/`completed`/`failed`), `provider`, `result`, `error`, `attempts`, timestamps |
+
+Indexes (`pnpm ... db:indexes`): `logs.timestamp_-1`, `logs.service_1_timestamp_-1`, `logs.level_1_timestamp_-1`, `analyses.status_1_createdAt_-1`, `analyses.createdAt_-1`.
+
+## Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `PROXY_PORT` | Host port published by Nginx (default 8080) |
+| `HTTP_AUTH_USERNAME`, `HTTP_AUTH_PASSWORD` | Basic Auth credentials for the proxy |
+| `API_PORT` | Internal API port (also used by the dev proxy and Nginx upstream) |
+| `NODE_ENV` | Runtime environment |
+| `MONGO_PORT`, `REDIS_PORT` | Loopback ports for local tooling |
+| `MONGODB_IMAGE`, `REDIS_IMAGE` | Pinned infrastructure images |
+| `MONGODB_INITDB_ROOT_USERNAME`, `MONGODB_INITDB_ROOT_PASSWORD`, `MONGODB_DATABASE` | MongoDB bootstrap |
+| `MONGODB_URI`, `REDIS_URL`, `APP_BASE_URL` | Host-side connection strings |
+| `MONGODB_URI_DOCKER`, `REDIS_URL_DOCKER`, `APP_BASE_URL_DOCKER` | In-network connection strings |
+| `REDIS_PASSWORD` | Redis password |
+| `CACHE_TTL_SECONDS` | TTL of the log list cache |
+| `AI_PROVIDER`, `AI_FALLBACK_PROVIDER` | Primary and fallback adapters |
+| `AI_PROVIDER_<NAME>_URL`, `AI_PROVIDER_<NAME>_HEALTH_URL`, `AI_PROVIDER_<NAME>_API_KEY` | Per-provider endpoint, health endpoint and secret |
+| `AI_PROVIDER_OPENAI_MODEL`, `AI_PROVIDER_ANTHROPIC_MODEL` | Model names |
+| `AI_REQUEST_TIMEOUT_MS`, `AI_HEALTH_TIMEOUT_MS` | HTTP timeouts |
+| `AI_RETRY_ATTEMPTS`, `AI_RETRY_BACKOFF_MS` | BullMQ attempts and initial exponential backoff |
+| `HEALTH_CHECK_MEMORY_HEAP_LIMIT`, `HEALTH_CHECK_MEMORY_RSS_LIMIT` | Memory limits in MiB |
+
+`.env.example` ships placeholder keys. `/api/health` returns `503` while they remain placeholders; `/api/health/live` keeps containers healthy.
+
+## Troubleshooting
+
+- **`/api/health` returns 503** — expected with placeholder AI keys. Check the failing indicator in the response body; `/api/health/live` only proves the process is up.
+- **Dashboard gets 401/403** — Nginx Basic Auth is enabled; use the credentials from `.env` (or call the API directly on `API_PORT` during local development).
+- **Karma cannot start Chrome** — install Chrome/Chromium or export `CHROME_BIN`. Running as root requires the `ChromeHeadlessNoSandbox` launcher already configured in `src/web/karma.conf.cjs`.
+- **Seed or index script cannot connect** — MongoDB must be reachable and `MONGODB_URI` must be exported in the current shell.
+- **Analysis stuck in `queued`** — check that Redis is up and the API worker is running; retries follow `AI_RETRY_ATTEMPTS` with exponential backoff and end in the dead-letter queue.
