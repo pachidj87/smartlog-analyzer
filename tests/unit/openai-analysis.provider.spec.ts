@@ -62,4 +62,31 @@ describe('OpenAiAnalysisProvider', () => {
       expect.any(Object),
     );
   });
+
+  it('rejects a non-JSON completion with 503', async () => {
+    post.mockResolvedValue({
+      data: { choices: [{ message: { content: 'not json' } }] },
+    });
+
+    await expect(provider.analyze([])).rejects.toMatchObject({ status: 503 });
+  });
+
+  it('rejects a JSON payload that misses the contract', async () => {
+    post.mockResolvedValue({
+      data: { choices: [{ message: { content: '{"summary":"x"}' } }] },
+    });
+
+    await expect(provider.analyze([])).rejects.toMatchObject({ status: 503 });
+  });
+
+  it('propagates a timeout as a failed call', async () => {
+    post.mockRejectedValue(
+      Object.assign(new Error('timeout of 15000ms exceeded'), {
+        code: 'ECONNABORTED',
+      }),
+    );
+
+    await expect(provider.analyze([])).rejects.toThrow(/timeout/i);
+  });
+
 });
