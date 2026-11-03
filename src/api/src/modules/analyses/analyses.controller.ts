@@ -7,6 +7,7 @@ import {
 
 import { AnalysisIdParamDto } from './dto/analysis-id-param.dto';
 import { ListAnalysesQueryDto } from './dto/list-analyses-query.dto';
+import { ListDeadLettersQueryDto } from './dto/list-dead-letters-query.dto';
 import { AnalysesService } from './analyses.service';
 
 @ApiTags('Analyses')
@@ -25,6 +26,14 @@ export class AnalysesController {
   @ApiQuery({ name: 'offset', required: false, type: Number, minimum: 0 })
   findAll(@Query() query: ListAnalysesQueryDto) {
     return this.analysesService.findAll(query);
+  }
+
+  @Get('dead-letter')
+  @ApiOperation({ summary: 'List analyses that exhausted every retry' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, maximum: 100 })
+  @ApiQuery({ name: 'offset', required: false, type: Number, minimum: 0 })
+  findDeadLetters(@Query() query: ListDeadLettersQueryDto) {
+    return this.analysesService.findDeadLetters(query);
   }
 
   @Get(':id')

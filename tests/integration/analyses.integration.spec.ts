@@ -27,6 +27,20 @@ describe('Analysis HTTP endpoints', () => {
       offset: query.offset,
     })),
     findOne: jest.fn().mockResolvedValue(analysis),
+    findDeadLetters: jest.fn().mockResolvedValue({
+      items: [
+        {
+          id: 'job-1',
+          analysisId: analysis.id,
+          failedReason: 'boom',
+          attempts: 3,
+          createdAt: '2026-11-02T14:00:00.000Z',
+        },
+      ],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    }),
   };
 
   beforeAll(async () => {
@@ -89,6 +103,30 @@ describe('Analysis HTTP endpoints', () => {
           offset: 0,
         });
       });
+  });
+
+  it('lists dead-letter jobs without being captured by the :id route', async () => {
+    await request(app.getHttpServer())
+      .get('/api/analysis/dead-letter')
+      .query({ limit: '10' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          total: 1,
+          limit: 10,
+          offset: 0,
+          items: [
+            expect.objectContaining({
+              analysisId: analysis.id,
+              failedReason: 'boom',
+              attempts: 3,
+            }),
+          ],
+        });
+      });
+
+    expect(analysesService.findOne).not.toHaveBeenCalled();
+    expect(analysesService.findDeadLetters).toHaveBeenCalled();
   });
 
   it('validates analysis IDs and returns a consistent 404 for missing records', async () => {

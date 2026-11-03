@@ -17,8 +17,18 @@ import { AnalysisEntity } from './entities/analysis.entity';
 import { AnalysisStatus } from './enums';
 import { AnalyzeLogsDto } from './dto/analyze-logs.dto';
 import { ListAnalysesQueryDto } from './dto/list-analyses-query.dto';
+import { ListDeadLettersQueryDto } from './dto/list-dead-letters-query.dto';
 import { ANALYSIS_DEAD_LETTER_QUEUE_NAME, ANALYSIS_QUEUE_NAME } from './constants';
 import { LOGS_SERVICE } from './symbols';
+
+
+export interface DeadLetterJob {
+  id: string;
+  analysisId: string;
+  failedReason: string;
+  attempts: number;
+  createdAt: string;
+}
 
 
 @Injectable()
@@ -102,8 +112,31 @@ export class AnalysesService {
     };
   }
 
-  async findOne(id: string) {
-    const objectId = new ObjectId(id);
+  async findDeadLetters(query: ListDeadLettersQueryDto) {
+    const total = await this.deadLetterQueue.getWaitingCount();
+    const jobs = await this.deadLetterQueue.getJobs(
+      ['waiting'],
+      query.offset,
+      query.offset + query.limit - 1,
+    );
+
+    const items: DeadLetterJob[] = jobs.map((job) => ({
+      id: String(job.id),
+      analysisId: String(job.data.analysisId),
+      failedReason: String(job.data.failedReason ?? 'unknown'),
+      attempts: Number(job.data.attempts ?? 0),
+      createdAt: new Date(job.timestamp).toISOString(),
+    }));
+
+    return {
+      items,
+      total,
+      limit: query.limit,
+      offset: query.offset,
+    };
+  }
+
+  async findOne(id: string) {    const objectId = new ObjectId(id);
     const analysis = await this.analysesRepository.findOneBy(
       { _id: objectId },
     );
