@@ -117,8 +117,12 @@
       <button
         type="button"
         class="logs__button logs__button--primary"
-        [disabled]="submitting() || selectedIds().size === 0"
-        (click)="openAnalysisPrompt()"
+        [disabled]="
+          submitting() ||
+          selectedIds().size === 0 ||
+          (analysisPromptOpen() && !!analysisPromptValidationMessage)
+        "
+        (click)="analyzeSelected()"
       >
         Analizar seleccionados ({{ selectedIds().size }})
       </button>
@@ -128,7 +132,11 @@
       <form class="logs__analysis-prompt" (ngSubmit)="analyzeSelected()">
         <div>
           <label class="logs__field">
-            <span>Instrucciones para el análisis con IA</span>
+            <span><b>Instrucciones para el análisis con IA: </b>
+            <small id="analysisPromptHelp">
+              Escribe un prompt obligatorio de hasta 4.000 caracteres. Se usará
+              únicamente para este análisis.
+            </small></span>
             <textarea
               id="analysisPrompt"
               name="analysisPrompt"
@@ -141,34 +149,12 @@
               #promptControl="ngModel"
               aria-describedby="analysisPromptHelp"
             ></textarea>
-            <small id="analysisPromptHelp">
-              Escribe un prompt obligatorio de hasta 4.000 caracteres. Se usará
-              únicamente para este análisis.
-            </small>
             @if (promptControl.dirty && analysisPromptValidationMessage) {
               <small class="logs__validation" role="alert">
                 {{ analysisPromptValidationMessage }}
               </small>
             }
           </label>
-        </div>
-
-        <div class="logs__actions">
-          <button
-            type="submit"
-            class="logs__button logs__button--primary"
-            [disabled]="submitting() || !!analysisPromptValidationMessage"
-          >
-            Iniciar análisis
-          </button>
-          <button
-            type="button"
-            class="logs__button"
-            [disabled]="submitting()"
-            (click)="cancelAnalysis()"
-          >
-            Cancelar
-          </button>
         </div>
       </form>
     }

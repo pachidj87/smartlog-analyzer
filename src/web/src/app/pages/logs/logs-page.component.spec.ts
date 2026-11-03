@@ -171,9 +171,7 @@ describe('LogsPageComponent', () => {
     ) as HTMLTextAreaElement;
     expect(promptInput.maxLength).toBe(4000);
     expect(promptInput.required).toBeTrue();
-    const submitButton = promptForm.querySelector(
-      'button[type="submit"]',
-    ) as HTMLButtonElement;
+    const submitButton = analyzeButton;
     const setPrompt = (value: string) => {
       component.analysisPrompt.set(value);
       fixture.detectChanges();
@@ -194,7 +192,7 @@ describe('LogsPageComponent', () => {
     setPrompt('Find recurring timeout errors');
     expect(submitButton.disabled).toBeFalse();
     expect(component.analysisPrompt()).toBe('Find recurring timeout errors');
-    promptForm.dispatchEvent(new Event('submit'));
+    submitButton.click();
     fixture.detectChanges();
 
     expect(api.enqueueAnalysis).toHaveBeenCalledWith(
