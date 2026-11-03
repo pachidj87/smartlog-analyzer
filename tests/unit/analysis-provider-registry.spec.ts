@@ -3,10 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 
 import {
-  ANALYSIS_PROVIDERS,
-  AnalysisProvider,
   AnalysisProviderRegistry,
-} from '../../src/api/src/modules/analyses/analysis-provider.registry';
+} from '../../src/api/src/modules/analyses/providers/analysis-provider.registry';
+import { AnalysisProviderInterface } from '../../src/api/src/modules/analyses/contracts/analysis-provider.interface';
+import { ANALYSIS_PROVIDERS } from '../../src/api/src/modules/analyses/symbols/analisys-provider.symbol';
 
 describe('AnalysisProviderRegistry', () => {
   afterEach(() => {
@@ -15,12 +15,12 @@ describe('AnalysisProviderRegistry', () => {
 
   it('uses the configured fallback when the active provider fails', async () => {
     const result = { summary: 'Recovered by fallback', insights: [] };
-    const active: AnalysisProvider = {
+    const active: AnalysisProviderInterface = {
       name: 'primary',
       analyze: jest.fn().mockRejectedValue(new Error('primary unavailable')),
       checkHealth: jest.fn(),
     };
-    const fallback: AnalysisProvider = {
+    const fallback: AnalysisProviderInterface = {
       name: 'backup',
       analyze: jest.fn().mockResolvedValue(result),
       checkHealth: jest.fn(),
@@ -52,12 +52,12 @@ describe('AnalysisProviderRegistry', () => {
   });
 
   it('logs both provider failures and returns service unavailable when all fail', async () => {
-    const active: AnalysisProvider = {
+    const active: AnalysisProviderInterface = {
       name: 'primary',
       analyze: jest.fn().mockRejectedValue(new Error('primary failed')),
       checkHealth: jest.fn(),
     };
-    const fallback: AnalysisProvider = {
+    const fallback: AnalysisProviderInterface = {
       name: 'backup',
       analyze: jest.fn().mockRejectedValue(new Error('backup failed')),
       checkHealth: jest.fn(),

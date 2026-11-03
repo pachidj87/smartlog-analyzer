@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 
-import { OpenAiAnalysisProvider } from '../../src/api/src/modules/analyses/openai-analysis.provider';
+import { OpenAiAnalysisProvider } from '../../src/api/src/modules/analyses/providers/openai-analysis.provider';
 
 describe('OpenAiAnalysisProvider', () => {
   const result = {

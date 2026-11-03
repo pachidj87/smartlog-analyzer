@@ -2,8 +2,8 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 
-import { GeminiAnalysisProvider } from '../../src/api/src/modules/analyses/gemini-analysis.provider';
-import { LogEntity } from '../../src/api/src/modules/logs/log.entity';
+import { GeminiAnalysisProvider } from '../../src/api/src/modules/analyses/providers/gemini-analysis.provider';
+import { LogEntity } from '../../src/api/src/modules/logs/entities/log.entity';
 
 describe('GeminiAnalysisProvider', () => {
   const analysisResult = {

@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 
-import { AnthropicAnalysisProvider } from '../../src/api/src/modules/analyses/anthropic-analysis.provider';
+import { AnthropicAnalysisProvider } from '../../src/api/src/modules/analyses/providers/anthropic-analysis.provider';
 
 describe('AnthropicAnalysisProvider', () => {
   const result = {

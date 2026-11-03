@@ -6,7 +6,7 @@ import {
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
 
-import { GlobalHttpExceptionFilter } from '../../src/api/src/common/global-http-exception.filter';
+import { GlobalHttpExceptionFilter } from '../../src/api/src/common/filters/global-http-exception.filter';
 import { AnalysesController } from '../../src/api/src/modules/analyses/analyses.controller';
 import { AnalysesService } from '../../src/api/src/modules/analyses/analyses.service';
 

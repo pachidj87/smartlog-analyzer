@@ -4,7 +4,7 @@ import * as request from 'supertest';
 
 import { LogsController } from '../../src/api/src/modules/logs/logs.controller';
 import { LogsService } from '../../src/api/src/modules/logs/logs.service';
-import { GlobalHttpExceptionFilter } from '../../src/api/src/common/global-http-exception.filter';
+import { GlobalHttpExceptionFilter } from '../../src/api/src/common/filters/global-http-exception.filter';
 
 describe('POST /api/logs', () => {
   let app: INestApplication;

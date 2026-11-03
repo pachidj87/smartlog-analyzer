@@ -1,9 +1,10 @@
 {
   "extends": "../src/api/tsconfig.json",
   "compilerOptions": {
-    "baseUrl": "..",
+    "baseUrl": "../src/api",
     "paths": {
-      "*": ["src/api/node_modules/*"]
+      "src/*": ["./src/*"],
+      "*": ["./node_modules/*"]
     },
     "types": ["jest", "node"],
     "typeRoots": ["../src/api/node_modules/@types", "../node_modules/@types"]
