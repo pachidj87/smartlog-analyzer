@@ -11,7 +11,8 @@ async function bootstrap() {
   const logger = new JsonLoggerService();
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(logger);
-  app.use(new RequestLoggingMiddleware(logger));
+  const requestLoggingMiddleware = new RequestLoggingMiddleware(logger);
+  app.use(requestLoggingMiddleware.use.bind(requestLoggingMiddleware));
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({
