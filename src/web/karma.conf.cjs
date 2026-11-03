@@ -1,5 +1,5 @@
 // Karma configuration for the SmartLog web app.
-// The spec files live at the repository root (tests/web), so this file exists
+// Specs are co-located with their components under src/app, so this file exists
 // mainly to keep plugin resolution anchored in the web project and to run
 // Chrome with --no-sandbox when the test process runs as root (containers, CI).
 module.exports = function (config) {
