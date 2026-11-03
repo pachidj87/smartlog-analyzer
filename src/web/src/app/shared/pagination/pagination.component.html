@@ -1,0 +1,37 @@
+<div class="pagination">
+  <span class="pagination__range">
+    Showing {{ rangeStart() }}–{{ rangeEnd() }} of {{ total() }}
+  </span>
+
+  <label class="pagination__size">
+    <span class="pagination__size-label">Per page</span>
+    <select
+      class="pagination__select"
+      [value]="limit()"
+      (change)="changePageSize($any($event.target).value)"
+    >
+      @for (size of pageSizes; track size) {
+        <option [value]="size">{{ size }}</option>
+      }
+    </select>
+  </label>
+
+  <div class="pagination__buttons">
+    <button
+      type="button"
+      class="pagination__button"
+      [disabled]="!canGoPrevious()"
+      (click)="goPrevious()"
+    >
+      Previous
+    </button>
+    <button
+      type="button"
+      class="pagination__button"
+      [disabled]="!canGoNext()"
+      (click)="goNext()"
+    >
+      Next
+    </button>
+  </div>
+</div>
